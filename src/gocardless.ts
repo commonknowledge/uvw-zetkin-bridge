@@ -7,20 +7,18 @@ const webhookEndpointSecret = process.env.GOCARDLESS_WEBHOOK_ENDPOINT_SECRET;
 
 export const handleGoCardlessWebhook = async (req: Express.Request<null, null, GocardlessWebhookRequest>, res: Express.Response<any>) => {
   try {
-    console.log(req.body)
-    console.log(req.headers)
-    if (!req.headers['Webhook-Signature']) {
-      throw new Error("Now Webhook-Signature header found")
-    } else if (!req.body?.events) {
+    if (!req.headers['webhook-signature']) {
+      throw new Error("Now webhook-signature header found")
+    } else if (!req.body?.events?.length) {
       throw new Error("No webhook data provided")
     }
-    console.log(await parseEvents(req.body, req.headers['Webhook-Signature'] as string))
     console.log(`Received ${req.body.events.length} events`)
+    await parseEvents(req.body, req.headers['webhook-signature'] as string)
     return res.status(204).send()
   } catch (error) {
     res.status(400)
     if (error instanceof webhooks.InvalidSignatureError) {
-      return res.json({ error, message: "Invalid Webhook-Signature" })
+      return res.json({ error, message: "Invalid webhook-signature" })
     }
     return res.json({ error, message: "Error receiving webhook" })
   }
