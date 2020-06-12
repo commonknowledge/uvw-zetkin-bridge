@@ -3,7 +3,7 @@ import express from 'express'
 import * as auth from './express-zetkin-auth';
 import cookieParser from 'cookie-parser'
 import sslRedirect from 'heroku-ssl-redirect'
-import { zetkinAuthOpts, validate, zetkinLogin, zetkinLogout, zetkinTokens, zetkinRefreshAndReturn, zetkinLoginUrl, authStorageInterceptor } from './auth';
+import { zetkinAuthOpts, validate, zetkinLogin, zetkinLogout, zetkinTokens, zetkinRefreshAndReturn, zetkinLoginUrl, authStorageInterceptor, zetkinLoginAndReturn } from './auth';
 import { handleGoCardlessWebhook } from './gocardless';
 import * as bodyParser from 'body-parser';
 
@@ -22,14 +22,16 @@ export default () => {
   app.use(authStorageInterceptor)
   app.get('/zetkin/login', zetkinLogin)
   app.get('/zetkin/logout', zetkinLogout);
-  app.get('/zetkin/tokens', validate(false), zetkinTokens)
-  app.get('/zetkin/refresh', validate(true), zetkinTokens)
+  if (process.env.NODE_ENV !== 'production') {
+    app.get('/zetkin/tokens', validate(false), zetkinTokens)
+    app.get('/zetkin/refresh', validate(true), zetkinTokens)
+  }
 
   app.get('/', (req, res) => {
     res.json({ hello: 'world' })
   })
 
-  app.get('/zetkin', validate(false), async (req, res) => {
+  app.get('/zetkin', validate(), async (req, res) => {
     try {
       // @ts-ignore
       const { data } = await req.z.resource('users', 'me').get()
@@ -38,16 +40,7 @@ export default () => {
       try {
         await zetkinRefreshAndReturn(req, res)
       } catch (e) {
-        return res.contentType('html').send(`
-          <html>
-          <body>
-            <h3>Need token</h3>
-            <a href='${zetkinLoginUrl(req, '/zetkin')}'>
-              Login and come back
-            </a>
-          </body>
-          </html>
-        `)
+        await zetkinLoginAndReturn(req, res)
       }
     }
   })
