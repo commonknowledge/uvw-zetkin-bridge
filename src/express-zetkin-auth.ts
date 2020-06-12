@@ -36,7 +36,7 @@ export function initialize(opts = {}) {
         let session = req.cookies?.[opts.sessionCookieName];
         if (req.query.code) {
             const callbackUrl = url.format({
-                protocol: opts.ssl? 'https' : 'http',
+                protocol: process.env.ZETKIN_CLIENT_PROTOCOL ? process.env.ZETKIN_CLIENT_PROTOCOL : opts.ssl ? 'https' : 'http',
                 host: req.get('host'),
                 pathname: req.path,
                 query: req.query,
