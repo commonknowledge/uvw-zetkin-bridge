@@ -149,7 +149,7 @@ export const validate = async (req: Express.Request, res: Express.Response, next
       res.redirect(req.z.getLoginUrl(url.format({
         protocol: opts.ssl? 'https' : 'http',
         host: req.get('host'),
-        pathname: `/zetkin/callback?redirect=${req.url}`,
+        pathname: `/zetkin/callback?redirect=${encodeURIComponent(req.url)}`,
       })))
     } catch (e) {
       console.error(e)
@@ -169,7 +169,7 @@ export const zetkinLoginAndReturn = async (req, res) => {
     console.error(e)
   }
 
-  return res.redirect(`/zetkin/login?redirect=${req.url}`)
+  return res.redirect(`/zetkin/login?redirect=${encodeURIComponent(req.url)}`)
 }
 
 export const zetkinLogin = async (req, res) => {
@@ -180,7 +180,7 @@ export const zetkinLogin = async (req, res) => {
   res.redirect(req.z.getLoginUrl(url.format({
     protocol: opts.ssl? 'https' : 'http',
     host: req.get('host'),
-    pathname: `/zetkin/callback?redirect=${req.query.redirect}`,
+    pathname: `/zetkin/callback?redirect=${encodeURIComponent(req.query.redirect)}`,
   })))
 }
 
