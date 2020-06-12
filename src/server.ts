@@ -5,6 +5,7 @@ import * as cookieParser from 'cookie-parser'
 import * as sslRedirect from 'heroku-ssl-redirect'
 import { zetkinAuthOpts, validate, zetkinCallback, zetkinLogin, zetkinLogout, zetkinLoginAndReturn, getValidTokens } from './auth';
 import { handleGoCardlessWebhook } from './gocardless';
+import * as bodyParser from 'body-parser';
 
 export default () => {
   const app = express()
@@ -12,6 +13,10 @@ export default () => {
   // @ts-ignore
   app.use(sslRedirect());
   app.use(cookieParser());
+  // parse application/x-www-form-urlencoded
+  app.use(bodyParser.urlencoded({ extended: false }))
+  // parse application/json
+  app.use(bodyParser.json())
   app.use(auth.initialize(zetkinAuthOpts));
   app.get('/zetkin/login', zetkinLogin)
   app.get('/zetkin/logout', zetkinLogout);
