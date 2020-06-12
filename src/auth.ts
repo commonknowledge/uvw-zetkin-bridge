@@ -102,6 +102,15 @@ export const refreshToken = async () => {
   }
 }
 
+export const zetkinLoginUrl = (req: Express.Request, redirectUri: string = req.url) => {
+  // @ts-ignore
+  return req.z.getLoginUrl(url.format({
+    protocol: process.env.ZETKIN_CLIENT_PROTOCOL ? process.env.ZETKIN_CLIENT_PROTOCOL : opts.ssl? 'https' : 'http',
+    host: req.get('host'),
+    pathname: `/zetkin/callback?redirect=${encodeURIComponent(redirectUri)}`,
+  }))
+}
+
 export const validate = async (req: Express.Request, res: Express.Response, next) => {
   // @ts-ignore
   if (!req.z.setTokenData) {
@@ -146,11 +155,7 @@ export const validate = async (req: Express.Request, res: Express.Response, next
       await deleteAllTokens()
       // And add a new one
       // @ts-ignore
-      res.redirect(req.z.getLoginUrl(url.format({
-        protocol: process.env.ZETKIN_CLIENT_PROTOCOL || opts.ssl? 'https' : 'http',
-        host: req.get('host'),
-        pathname: `/zetkin/callback?redirect=${encodeURIComponent(req.url)}`,
-      })))
+      res.redirect(zetkinLoginUrl(req))
     } catch (e) {
       console.error(e)
     }
@@ -177,11 +182,7 @@ export const zetkinLogin = async (req, res) => {
   await deleteAllTokens()
   // And add a new one
   // @ts-ignore
-  res.redirect(req.z.getLoginUrl(url.format({
-    protocol: process.env.ZETKIN_CLIENT_PROTOCOL || opts.ssl? 'https' : 'http',
-    host: req.get('host'),
-    pathname: `/zetkin/callback?redirect=${encodeURIComponent(req.query.redirect)}`,
-  })))
+  res.redirect(getLoginUrl(req, req.query.redirect))
 }
 
 export const zetkinLogout = async (req, res) => {
