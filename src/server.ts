@@ -54,6 +54,5 @@ export default () => {
 
   app.all('/webhooks/gocardless', handleGoCardlessWebhook)
 
-  const PORT = process.env.PORT || 7000
-  app.listen(PORT, () => `Listening at port ${PORT}`)
+  return app
 }

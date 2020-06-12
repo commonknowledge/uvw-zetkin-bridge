@@ -1,5 +1,5 @@
 node_modules
 .DS_Store
-.envs/.local/.node
+.envs/*/.node
 *.log
 build/

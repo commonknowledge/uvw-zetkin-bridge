@@ -7,6 +7,8 @@ module.exports = {
     connection: { filename: ":memory:" },
     pool: { min: 1, max: 1 },
     migrations: {
+      extension: 'ts',
+      directory: './migrations',
       tableName: "knex_migrations"
     }
   },
@@ -25,6 +27,8 @@ module.exports = {
       max: 10
     },
     migrations: {
+      extension: 'ts',
+      directory: './migrations',
       tableName: "knex_migrations"
     }
   },
@@ -37,6 +41,8 @@ module.exports = {
       max: 10
     },
     migrations: {
+      extension: 'ts',
+      directory: './migrations',
       tableName: "knex_migrations"
     }
   }

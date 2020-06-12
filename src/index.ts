@@ -1,5 +1,5 @@
 import '../env'
-import runServer from './server';
+import createServer from './server';
 const cluster = require('cluster');
 const numCPUs = require('os').cpus().length;
 
@@ -33,5 +33,7 @@ if (cluster.isMaster && shouldMultithread) {
   //catches uncaught exceptions
   process.on('uncaughtException', exitHandler.bind(null, {exit:true, workers}));
 } else {
-  runServer()
+  const app = createServer()
+  const PORT = process.env.PORT || 7000
+  app.listen(PORT, () => `Listening at port ${PORT}`)
 }
