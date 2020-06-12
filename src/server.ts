@@ -24,6 +24,11 @@ export default () => {
       })
     })
   }
+
+  app.get('/', (req, res) => {
+    res.json({ hello: 'world' })
+  })
+
   app.get('/zetkin/callback', zetkinCallback)
 
   app.get('/zetkin', validate, async (req, res) => {
