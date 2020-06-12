@@ -1,25 +1,42 @@
 import '../env'
-import * as express from 'express'
-import * as auth from 'express-zetkin-auth';
-import * as cookieParser from 'cookie-parser'
-import { zetkinAuthOpts, validate, zetkinCallback, zetkinLogin, zetkinLogout, zetkinLoginAndReturn } from './auth';
-const app = express()
+import runServer from './server';
+const cluster = require('cluster');
+const numCPUs = require('os').cpus().length;
 
-app.use(cookieParser());
-app.use(auth.initialize(zetkinAuthOpts));
-app.get('/zetkin/login', zetkinLogin)
-app.get('/zetkin/logout', zetkinLogout);
-app.get('/zetkin/callback', zetkinCallback)
+const shouldMultithread = process.env.NODE_ENV === 'production'
 
-app.get('/zetkin', validate, async (req, res) => {
-  try {
-    // @ts-ignore
-    const { data } = await req.z.resource('users', 'me').get()
-    return res.json(data)
-  } catch (e) {
-    zetkinLoginAndReturn(req, res)
+function exitHandler({ cleanup, exit, workers }, exitCode) {
+  for (const worker of workers) {
+    console.log(`Killing process ${worker.id}`)
+    worker.kill();
   }
-})
+  if (cleanup) console.log('clean');
+  if (exitCode || exitCode === 0) console.log(exitCode);
+  if (exit) process.exit();
+}
 
-const PORT = 7000
-app.listen(PORT, () => console.log('Running at port', PORT))
+if (cluster.isMaster && shouldMultithread) {
+  console.log(`Master ${process.pid} is running`);
+  const workers = []
+
+  // Fork workers.
+  for (let i = 0; i < numCPUs; i++) {
+    workers.push(cluster.fork())
+  }
+
+  cluster.on('exit', (worker, code, signal) => {
+    console.log(`worker ${worker.process.pid} died`);
+  });
+
+  process.on('exit', exitHandler.bind(null, {cleanup:true, workers}));
+  //catches ctrl+c event
+  process.on('SIGINT', exitHandler.bind(null, {exit:true, workers}));
+  // catches "kill pid" (for example: nodemon restart)
+  process.on('SIGUSR1', exitHandler.bind(null, {exit:true, workers}));
+  process.on('SIGUSR2', exitHandler.bind(null, {exit:true, workers}));
+  //catches uncaught exceptions
+  process.on('uncaughtException', exitHandler.bind(null, {exit:true, workers}));
+} else {
+  console.log(`Worker ${process.pid} is running`)
+  runServer()
+}

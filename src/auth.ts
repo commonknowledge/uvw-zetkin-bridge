@@ -85,6 +85,11 @@ export const getTokens = async () => {
   return db.table<Token>('tokens')
 }
 
+export const getValidTokens = async () => {
+  const tokens = await getTokens()
+  return tokens.filter(isValidToken)
+}
+
 export const refreshToken = async () => {
   const tokens: Token[] = await db.table('tokens')
   for (const token of tokens) {
@@ -103,21 +108,21 @@ export const validate = async (req: Express.Request, res: Express.Response, next
     throw new Error('express-zetkin-auth middleware appears to be missing')
   }
   // @ts-ignore
-  if (!!req.zetkinTokenData && isValidToken(req.zetkinTokenData)) {
+  const sessionTokenData = req.z.getTokenData()
+  if (!!sessionTokenData && isValidToken(sessionTokenData)) {
     // @ts-ignore
-    req.z.setTokenData(req.zetkinTokenData)
+    saveToken(sessionTokenData, 'session')
     return next()
   }
   try {
     // @ts-ignore
-    const databaseResponse = await getTokens(req)
+    const databaseResponse = await getTokens()
 
     if (databaseResponse.length === 0) {
       throw new Error('No tokens found. Authorization required.')
     }
 
-    const validTokens = databaseResponse
-      .filter(isValidToken)
+    const validTokens = databaseResponse.filter(isValidToken)
 
     if (validTokens.length > 0) {
       // @ts-ignore
@@ -152,7 +157,18 @@ export const validate = async (req: Express.Request, res: Express.Response, next
   }
 }
 
-export const zetkinLoginAndReturn = (req, res) => {
+export const zetkinLoginAndReturn = async (req, res) => {
+  try {
+    const refreshedToken = await refreshToken()
+    if (refreshedToken.length) {
+      // @ts-ignore
+      req.z.setTokenData(refreshedToken[0])
+      return res.redirect(req.url)
+    }
+  } catch (e) {
+    console.error(e)
+  }
+
   return res.redirect(`/zetkin/login?redirect=${req.url}`)
 }
 
@@ -171,6 +187,7 @@ export const zetkinLogin = async (req, res) => {
 export const zetkinLogout = async (req, res) => {
   await deleteAllTokens()
   auth.logout(zetkinAuthOpts)
+  res.redirect('/zetkin')
 }
 
 export const zetkinCallback = async (req, res) => {
@@ -179,7 +196,7 @@ export const zetkinCallback = async (req, res) => {
     const databaseResponse = await saveToken(req.z.getTokenData(), 'session');
     (req as any).tokenData = databaseResponse[0]
 
-    if (req.query.redirect) {
+    if (req.query.redirect && req.query.redirect !== 'undefined') {
       return res.redirect(req.query.redirect as string)
     }
 
@@ -188,6 +205,6 @@ export const zetkinCallback = async (req, res) => {
       databaseResponse
     })
   } catch (e) {
-    res.redirect('/zetkin/refresh')
+    res.redirect('/zetkin')
   }
 }
