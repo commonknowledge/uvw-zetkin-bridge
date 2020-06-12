@@ -2,12 +2,14 @@ import '../env'
 import * as express from 'express'
 import * as auth from 'express-zetkin-auth';
 import * as cookieParser from 'cookie-parser'
+import * as sslRedirect from 'heroku-ssl-redirect'
 import { zetkinAuthOpts, validate, zetkinCallback, zetkinLogin, zetkinLogout, zetkinLoginAndReturn, getValidTokens } from './auth';
 
 export default () => {
   const app = express()
 
   // @ts-ignore
+  app.use(sslRedirect());
   app.use(cookieParser());
   app.use(auth.initialize(zetkinAuthOpts));
   app.get('/zetkin/login', zetkinLogin)
