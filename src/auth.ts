@@ -95,7 +95,7 @@ export const refreshToken = async () => {
   for (const token of tokens) {
     const newToken = await zetkinOAuthClient.createToken(token as any).refresh()
     if (!!newToken) {
-      await db.table('tokens').delete().where(token)
+      await db.table('tokens').delete().where('access_token', '=', token.access_token)
       const savedToken = await saveToken(newToken.data, 'refresh')
       return savedToken
     }
@@ -111,7 +111,7 @@ export const zetkinLoginUrl = (req: Express.Request, redirectUri: string = req.u
   }))
 }
 
-export const validate = async (req: Express.Request, res: Express.Response, next) => {
+export const validate = (redirect = true) => async (req: Express.Request, res: Express.Response, next) => {
   // @ts-ignore
   if (!req.z.setTokenData) {
     throw new Error('express-zetkin-auth middleware appears to be missing')
@@ -151,30 +151,42 @@ export const validate = async (req: Express.Request, res: Express.Response, next
   } catch (e) {
     console.error(e)
     try {
-      // Delete all existing tokens
-      await deleteAllTokens()
-      // And add a new one
-      // @ts-ignore
-      res.redirect(zetkinLoginUrl(req))
+      if (redirect) {
+        // Delete all existing tokens
+        await deleteAllTokens()
+        // And add a new one
+        // @ts-ignore
+        res.redirect(zetkinLoginUrl(req))
+      } else {
+        return next()
+      }
     } catch (e) {
       console.error(e)
     }
   }
 }
 
-export const zetkinLoginAndReturn = async (req, res) => {
-  try {
-    const refreshedToken = await refreshToken()
-    if (refreshedToken.length) {
-      // @ts-ignore
-      req.z.setTokenData(refreshedToken[0])
-      return res.redirect(req.url)
-    }
-  } catch (e) {
-    console.error(e)
+export const zetkinRefreshAndReturn = async (req: Express.Request, res: Express.Response) => {
+  const refreshedToken = await refreshToken()
+  if (refreshedToken.length) {
+    // @ts-ignore
+    req.z.setTokenData(refreshedToken[0])
+    return res.redirect(req.url)
+  } else {
+    throw new Error("Couldn't refresh token")
   }
+}
 
+export const zetkinLoginAndReturn = async (req: Express.Request, res: Express.Response) => {
   return res.redirect(`/zetkin/login?redirect=${encodeURIComponent(req.url)}`)
+}
+
+export const zetkinTokens = async (req: Express.Request, res: Express.Response) => {
+  const tokens = await getValidTokens()
+  return res.json({
+    authorized: tokens.length ? '✅' : '❌',
+    tokens
+  })
 }
 
 export const zetkinLogin = async (req, res) => {
@@ -182,7 +194,7 @@ export const zetkinLogin = async (req, res) => {
   await deleteAllTokens()
   // And add a new one
   // @ts-ignore
-  res.redirect(getLoginUrl(req, req.query.redirect))
+  res.redirect(zetkinLoginUrl(req, req.query.redirect))
 }
 
 export const zetkinLogout = async (req, res) => {
@@ -194,7 +206,12 @@ export const zetkinLogout = async (req, res) => {
 export const zetkinCallback = async (req, res) => {
   try {
     // @ts-ignore
-    const databaseResponse = await saveToken(req.z.getTokenData(), 'session');
+    const tokenData = req.z.getTokenData()
+    if (!tokenData) {
+      throw new Error("Didn't get any token data from login")
+    }
+    deleteAllTokens()
+    const databaseResponse = await saveToken(tokenData, 'session');
     (req as any).tokenData = databaseResponse[0]
 
     if (req.query.redirect && req.query.redirect !== 'undefined') {
@@ -206,6 +223,7 @@ export const zetkinCallback = async (req, res) => {
       databaseResponse
     })
   } catch (e) {
+    console.error(e)
     res.redirect('/zetkin')
   }
 }
