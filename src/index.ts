@@ -24,10 +24,6 @@ if (cluster.isMaster && shouldMultithread) {
     workers.push(cluster.fork())
   }
 
-  cluster.on('exit', (worker, code, signal) => {
-    console.log(`worker ${worker.process.pid} died`);
-  });
-
   process.on('exit', exitHandler.bind(null, {cleanup:true, workers}));
   //catches ctrl+c event
   process.on('SIGINT', exitHandler.bind(null, {exit:true, workers}));
@@ -37,6 +33,5 @@ if (cluster.isMaster && shouldMultithread) {
   //catches uncaught exceptions
   process.on('uncaughtException', exitHandler.bind(null, {exit:true, workers}));
 } else {
-  console.log(`Worker ${process.pid} is running`)
   runServer()
 }

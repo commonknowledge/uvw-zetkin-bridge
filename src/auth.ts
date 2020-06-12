@@ -2,9 +2,9 @@ import db from './db'
 import * as Express from 'express'
 import { Timestamps } from './db';
 import * as Z from 'zetkin'
-import * as ClientOAuth2 from 'client-oauth2'
+import ClientOAuth2 from 'client-oauth2'
 import * as url from 'url'
-import * as auth from 'express-zetkin-auth';
+import * as auth from './express-zetkin-auth';
 
 /**
  * Zetkin auth
@@ -32,6 +32,7 @@ const defaultOpts = {
 
 export const opts = Object.assign({}, defaultOpts, zetkinAuthOpts);
 
+// @ts-ignore
 export const zetkin = Z.construct({
   clientId: opts.app.id,
   clientSecret: opts.app.secret,
@@ -41,6 +42,7 @@ export const zetkin = Z.construct({
 
 const _config = zetkin.getConfig()
 
+// @ts-ignore
 export const zetkinOAuthClient = new ClientOAuth2({
   clientId: _config.clientId,
   clientSecret: _config.clientSecret,
@@ -106,7 +108,7 @@ export const zetkinLoginUrl = (req: Express.Request, redirectUri: string = req.u
   // @ts-ignore
   return req.z.getLoginUrl(url.format({
     protocol: process.env.ZETKIN_CLIENT_PROTOCOL ? process.env.ZETKIN_CLIENT_PROTOCOL : opts.ssl? 'https' : 'http',
-    host: url.parse(redirectUri).host || req.host,
+    host: url.parse(redirectUri).host || req.hostname,
     pathname: url.parse(redirectUri).pathname,
   }))
 }
@@ -119,7 +121,6 @@ export const validate = (redirect = true) => async (req: Express.Request, res: E
   // @ts-ignore
   const sessionTokenData = req.z.getTokenData()
   if (!!sessionTokenData && isValidToken(sessionTokenData)) {
-    console.log('Found session token', sessionTokenData)
     // @ts-ignore
     saveToken(sessionTokenData, 'session')
     return next()
@@ -171,7 +172,6 @@ export const authStorageInterceptor = async (req: Express.Request, res: Express.
   // @ts-ignore
   let session = req.cookies?.[opts.sessionCookieName];
   if (req.query.code || session) {
-    console.log("Intercepting new token picked up from login")
     // @ts-ignore
     const tokenData = req.z.getTokenData()
     if (!tokenData) {

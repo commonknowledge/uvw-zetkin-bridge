@@ -10,7 +10,7 @@
     "develop": "nodemon",
     "migrate": "knex migrate:latest",
     "makemigration": "knex migrate:make -x ts",
-    "build": "tsc ./src/index --outDir ./build"
+    "build": "tsc --project tsconfig.json"
   },
   "engines": {
     "node": "10.20.1"
