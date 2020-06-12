@@ -3,7 +3,7 @@ import * as Knex from "knex";
 
 export async function up(knex: Knex): Promise<any> {
   return knex.schema.createTableIfNotExists('tokens', function(t) {
-    t.timestamps(false, true),
+    t.timestamps(false, true);
     t.string('access_token').unique().primary();
     t.integer('expires_in');
     t.dateTime('expiry_time');
