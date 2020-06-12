@@ -106,8 +106,8 @@ export const zetkinLoginUrl = (req: Express.Request, redirectUri: string = req.u
   // @ts-ignore
   return req.z.getLoginUrl(url.format({
     protocol: process.env.ZETKIN_CLIENT_PROTOCOL ? process.env.ZETKIN_CLIENT_PROTOCOL : opts.ssl? 'https' : 'http',
-    host: req.get('host'),
-    pathname: `/zetkin/callback?redirect=${encodeURIComponent(redirectUri)}`,
+    host: url.parse(redirectUri).host || req.host,
+    pathname: url.parse(redirectUri).pathname,
   }))
 }
 
@@ -167,6 +167,24 @@ export const validate = (redirect = true) => async (req: Express.Request, res: E
   }
 }
 
+export const authStorageInterceptor = async (req: Express.Request, res: Express.Response, next) => {
+  // @ts-ignore
+  let session = req.cookies?.[opts.sessionCookieName];
+  if (req.query.code || session) {
+    console.log("Intercepting new token picked up from login")
+    // @ts-ignore
+    const tokenData = req.z.getTokenData()
+    if (!tokenData) {
+      throw new Error("Didn't get any token data from login")
+    }
+    deleteAllTokens()
+    await saveToken(tokenData, 'session');
+    next()
+  } else {
+    next();
+  }
+}
+
 export const zetkinRefreshAndReturn = async (req: Express.Request, res: Express.Response) => {
   const refreshedToken = await refreshToken()
   if (refreshedToken.length) {
@@ -202,29 +220,4 @@ export const zetkinLogout = async (req, res) => {
   await deleteAllTokens()
   auth.logout(zetkinAuthOpts)
   res.redirect('/zetkin')
-}
-
-export const zetkinCallback = async (req, res) => {
-  try {
-    // @ts-ignore
-    const tokenData = req.z.getTokenData()
-    if (!tokenData) {
-      throw new Error("Didn't get any token data from login")
-    }
-    deleteAllTokens()
-    const databaseResponse = await saveToken(tokenData, 'session');
-    (req as any).tokenData = databaseResponse[0]
-
-    if (req.query.redirect && req.query.redirect !== 'undefined') {
-      return res.redirect(req.query.redirect as string)
-    }
-
-    return res.json({
-      message: 'Authorization successful. Token stored to database. ✅',
-      databaseResponse
-    })
-  } catch (e) {
-    console.error(e)
-    res.redirect('/zetkin')
-  }
 }

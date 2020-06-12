@@ -3,7 +3,7 @@ import * as express from 'express'
 import * as auth from 'express-zetkin-auth';
 import * as cookieParser from 'cookie-parser'
 import * as sslRedirect from 'heroku-ssl-redirect'
-import { zetkinAuthOpts, validate, zetkinCallback, zetkinLogin, zetkinLogout, zetkinLoginAndReturn, getValidTokens, zetkinTokens, zetkinRefreshAndReturn, zetkinLoginUrl } from './auth';
+import { zetkinAuthOpts, validate, zetkinLogin, zetkinLogout, zetkinTokens, zetkinRefreshAndReturn, zetkinLoginUrl, authStorageInterceptor } from './auth';
 import { handleGoCardlessWebhook } from './gocardless';
 import * as bodyParser from 'body-parser';
 
@@ -18,15 +18,11 @@ export default () => {
   // parse application/json
   app.use(bodyParser.json())
   app.use(auth.initialize(zetkinAuthOpts));
+  app.use(authStorageInterceptor)
   app.get('/zetkin/login', zetkinLogin)
   app.get('/zetkin/logout', zetkinLogout);
   app.get('/zetkin/tokens', validate(false), zetkinTokens)
   app.get('/zetkin/refresh', validate(true), zetkinTokens)
-  app.all('/zetkin/callback', (req, res, next) => {
-    console.log("Received call to /zetkin/callback")
-    console.log(req.cookies)
-    next()
-  }, zetkinCallback)
 
   app.get('/', (req, res) => {
     res.json({ hello: 'world' })
