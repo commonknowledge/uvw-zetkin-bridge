@@ -11,7 +11,7 @@ export default () => {
   const app = express()
 
   // @ts-ignore
-  app.use(sslRedirect());
+  // app.use(sslRedirect());
   app.use(cookieParser());
   // parse application/x-www-form-urlencoded
   app.use(bodyParser.urlencoded({ extended: false }))

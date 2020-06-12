@@ -119,6 +119,7 @@ export const validate = (redirect = true) => async (req: Express.Request, res: E
   // @ts-ignore
   const sessionTokenData = req.z.getTokenData()
   if (!!sessionTokenData && isValidToken(sessionTokenData)) {
+    console.log('Found session token', sessionTokenData)
     // @ts-ignore
     saveToken(sessionTokenData, 'session')
     return next()
