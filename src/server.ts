@@ -15,7 +15,6 @@ export default () => {
   if (process.env.NODE_ENV !== 'production') {
     app.get('/zetkin/tokens', validate, async (req, res) => {
       const tokens = await getValidTokens()
-      console.log(tokens)
       return res.json({
         authorized: tokens.length ? '✅' : '❌',
         tokens
