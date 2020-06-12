@@ -212,10 +212,15 @@
     "@types/node" "*"
     form-data "^3.0.0"
 
-"@types/node@*", "@types/node@^13.13.5":
+"@types/node@*":
   version "13.13.5"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-13.13.5.tgz#96ec3b0afafd64a4ccea9107b75bf8489f0e5765"
   integrity sha512-3ySmiBYJPqgjiHA7oEaIo2Rzz0HrOZ7yrNO5HWyaE5q0lQ3BppDZ3N53Miz8bw2I7gh1/zir2MGVZBvpb1zq9g==
+
+"@types/node@^14.0.13":
+  version "14.0.13"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-14.0.13.tgz#ee1128e881b874c371374c1f72201893616417c9"
+  integrity sha512-rouEWBImiRaSJsVA+ITTFM6ZxibuAlTuNOCyxVbwreu6k6+ujs7DfnU9o+PShFhET78pMBl3eH+AGSI5eOTkPA==
 
 "@types/qs@*":
   version "6.9.3"
@@ -3055,6 +3060,11 @@ ts-odata-filter@^0.0.10:
   integrity sha512-vZXFOqFadpS5Wkcac0Lo349DBrco6MG+5zoP8U8EUrWJ5bnwVJkCimeeKjX1vZAnx9l27cQJQ/vmXUksez77WQ==
   dependencies:
     ts-object-path "^0.1.1"
+
+tsc@^1.20150623.0:
+  version "1.20150623.0"
+  resolved "https://registry.yarnpkg.com/tsc/-/tsc-1.20150623.0.tgz#4ebc3c774e169148cbc768a7342533f082c7a6e5"
+  integrity sha1-Trw8d04WkUjLx2inNCUz8ILHpuU=
 
 tslib@^1.9.3:
   version "1.13.0"

@@ -1,17 +1,19 @@
 {
-  "name": "anscripts",
+  "name": "uvw-zetkin-bridge",
   "version": "1.0.0",
-  "main": "index.ts",
-  "repository": "https://github.com/commonknowledge",
+  "main": "src/index.ts",
+  "repository": "https://github.com/commonknowledge/uvw-zetkin-bridge",
   "author": "Common Knowledge Co-operative <hello@commonknowledge.coop>",
   "license": "AGPL-3.0",
   "scripts": {
-    "start": "ts-node",
+    "start": "yarn migrate && node ./build/src/index.js",
     "develop": "nodemon",
     "migrate": "knex migrate:latest",
     "makemigration": "knex migrate:make -x ts",
-    "build": "tsc",
-    "postinstall": "npm run build"
+    "build": "tsc ./src/index --outDir ./build"
+  },
+  "engines": {
+    "node": "10.20.1"
   },
   "dependencies": {
     "@civix/osdi-types": "^0.0.1",
@@ -20,7 +22,7 @@
     "@types/express": "^4.17.6",
     "@types/knex": "^0.16.1",
     "@types/lodash": "^4.14.150",
-    "@types/node": "^13.13.5",
+    "@types/node": "^14.0.13",
     "@types/node-fetch": "^2.5.7",
     "@types/query-string": "^6.3.0",
     "client-oauth2": "^4.3.0",
@@ -39,6 +41,7 @@
     "random-words": "^1.1.1",
     "ts-node": "^8.10.1",
     "ts-odata-filter": "^0.0.10",
+    "tsc": "^1.20150623.0",
     "typescript": "^3.8.3",
     "url": "^0.11.0",
     "zetkin": "^1.2.1"
