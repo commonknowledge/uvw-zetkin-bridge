@@ -1,16 +1,19 @@
 // Update with your config settings.
 import './env'
+import path from 'path'
+
+const migrations = {
+  extension: 'ts',
+  tableName: "knex_migrations",
+  directory: path.join(__dirname, './migrations'),
+}
 
 module.exports = {
   test: {
     client: "sqlite3",
     connection: { filename: ":memory:" },
     pool: { min: 1, max: 1 },
-    migrations: {
-      extension: 'ts',
-      directory: './migrations',
-      tableName: "knex_migrations"
-    }
+    migrations
   },
 
   development: {
@@ -26,11 +29,7 @@ module.exports = {
       min: 2,
       max: 10
     },
-    migrations: {
-      extension: 'ts',
-      directory: './migrations',
-      tableName: "knex_migrations"
-    }
+    migrations
   },
 
   production: {
@@ -40,10 +39,6 @@ module.exports = {
       min: 2,
       max: 10
     },
-    migrations: {
-      extension: 'ts',
-      directory: './migrations',
-      tableName: "knex_migrations"
-    }
+    migrations
   }
 };
