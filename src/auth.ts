@@ -147,7 +147,7 @@ export const validate = async (req: Express.Request, res: Express.Response, next
       // And add a new one
       // @ts-ignore
       res.redirect(req.z.getLoginUrl(url.format({
-        protocol: opts.ssl? 'https' : 'http',
+        protocol: process.env.ZETKIN_CLIENT_PROTOCOL || opts.ssl? 'https' : 'http',
         host: req.get('host'),
         pathname: `/zetkin/callback?redirect=${encodeURIComponent(req.url)}`,
       })))
@@ -178,7 +178,7 @@ export const zetkinLogin = async (req, res) => {
   // And add a new one
   // @ts-ignore
   res.redirect(req.z.getLoginUrl(url.format({
-    protocol: opts.ssl? 'https' : 'http',
+    protocol: process.env.ZETKIN_CLIENT_PROTOCOL || opts.ssl? 'https' : 'http',
     host: req.get('host'),
     pathname: `/zetkin/callback?redirect=${encodeURIComponent(req.query.redirect)}`,
   })))
