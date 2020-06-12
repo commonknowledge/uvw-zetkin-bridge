@@ -4,6 +4,7 @@ import * as auth from 'express-zetkin-auth';
 import * as cookieParser from 'cookie-parser'
 import * as sslRedirect from 'heroku-ssl-redirect'
 import { zetkinAuthOpts, validate, zetkinCallback, zetkinLogin, zetkinLogout, zetkinLoginAndReturn, getValidTokens } from './auth';
+import { handleGoCardlessWebhook } from './gocardless';
 
 export default () => {
   const app = express()
@@ -33,6 +34,15 @@ export default () => {
     } catch (e) {
       await zetkinLoginAndReturn(req, res)
     }
+  })
+
+  app.all('/webhooks/gocardless', handleGoCardlessWebhook)
+
+  app.get('/', (req, res) => {
+    console.log(req)
+    console.log(req.body)
+    console.log(req.headers['Webhook-Signature'])
+    return res.status(204).send()
   })
 
   const PORT = process.env.PORT || 7000
