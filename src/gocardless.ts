@@ -3,6 +3,10 @@ import * as process from "process"
 import * as webhooks from "gocardless-nodejs/webhooks"
 import * as Express from 'express'
 import db from "./db";
+import * as constants from 'gocardless-nodejs/constants'
+import GoCardless from 'gocardless-nodejs'
+// @ts-ignore
+const gocardless = GoCardless(process.env.GOCARDLESS_ACCESS_TOKEN, constants.Environments.Live);
 
 const webhookEndpointSecret = process.env.GOCARDLESS_WEBHOOK_ENDPOINT_SECRET;
 
@@ -82,4 +86,30 @@ export interface Details {
 
 export interface Links {
   payment: string;
+}
+
+/**
+ * @example await getLinked(customEvent, 'payment', 'mandate', 'customer')
+ */
+export const getLinked = async (event: Event, ...resources: string[]) => {
+  const data = [event]
+  for (const resource of resources) {
+    const lastItem = data[data.length - 1]
+    data.push(await gocardless[resource + 's'].find(lastItem.links[resource]))
+  }
+  return data[data.length - 1]
+}
+
+export const gocardlessQuery = async (
+  req: Express.Request,
+  res: Express.Response
+) => {
+  try {
+    if (!req.query.eventId) throw new Error("Provide an eventId in the query string.")
+    if (!req.query.resourceChain) throw new Error("Provide an resourceChain in the query string.")
+    const event = await gocardless.events.find(req.query.eventId)
+    return res.json(await getLinked(event, ...(req.query.resourceChain as string).split(',')))
+  } catch (e) {
+    return res.json(e)
+  }
 }

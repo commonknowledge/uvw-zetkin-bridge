@@ -4,7 +4,7 @@ import * as auth from './express-zetkin-auth';
 import cookieParser from 'cookie-parser'
 import sslRedirect from 'heroku-ssl-redirect'
 import { zetkinAuthOpts, validate, zetkinLogin, zetkinLogout, zetkinTokens, zetkinRefreshAndReturn, zetkinLoginUrl, authStorageInterceptor, zetkinLoginAndReturn } from './auth';
-import { handleGoCardlessWebhook } from './gocardless';
+import { handleGoCardlessWebhook, gocardlessQuery } from './gocardless';
 import * as bodyParser from 'body-parser';
 
 export default () => {
@@ -46,6 +46,8 @@ export default () => {
   })
 
   app.all('/webhooks/gocardless', handleGoCardlessWebhook)
+
+  app.all('/gocardless', gocardlessQuery)
 
   return app
 }
