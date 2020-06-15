@@ -7,11 +7,13 @@
   "license": "AGPL-3.0",
   "scripts": {
     "start": "yarn migrate && node ./build/src/index.js",
+    "develop:db": "docker-compose up",
     "develop": "nodemon",
     "migrate": "knex migrate:latest",
     "makemigration": "knex migrate:make -x ts",
     "build": "tsc --project tsconfig.json",
-    "test": "NODE_ENV=test knex migrate:latest && NODE_ENV=test mocha -r ts-node/register --watch ./src/**/*.test.*"
+    "test": "NODE_ENV=test knex migrate:latest && NODE_ENV=test mocha -r ts-node/register --watch ./src/**/*.test.*",
+    "ngrok": "~/ngrok http --subdomain=commonknowledge --region=eu 7000"
   },
   "engines": {
     "node": "10.20.1"
