@@ -1,7 +1,8 @@
 import expect from 'expect'
 import db from "./db"
 import path from 'path'
-import { Event, mapEventToRow } from './gocardless';
+import { mapEventToRow } from './gocardless';
+import GoCardless from 'gocardless-nodejs';
 
 const webhookRequest = {
   body: {
@@ -54,7 +55,7 @@ describe('test database', () => {
   
   it('Data can be stored and retrieved on a test sqlite3 db', async () => {
     await db.table('events').insert(webhookRequest.body.events.map(mapEventToRow as any))
-    const events = await db.table('events').select('*')
+    const events = await db.select<GoCardless.Event[]>('*').from('events')
     expect(events.length).toEqual(webhookRequest.body.events.length)
   })
 

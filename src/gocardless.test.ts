@@ -1,11 +1,9 @@
 import expect from 'expect'
-import nock from 'nock'
 import supertest from 'supertest'
-import express from 'express'
 import createServer from './server'
 const app = createServer()
 import db from "./db"
-import { handleGoCardlessWebhook, Event } from './gocardless';
+import GoCardless from 'gocardless-nodejs';
 
 const webhookRequest = {
   body: {
@@ -91,7 +89,7 @@ describe('gocardless webhook receiver', () => {
       .set('content-type', webhookRequest.headers['content-type'])
       .set('webhook-signature', webhookRequest.headers['webhook-signature'])
 
-    const events = await db.select<Event[]>('*').from('events').where('id', 'in', webhookRequest.body.events.map(e => e.id))
+    const events = await db.select<GoCardless.Event[]>('*').from('events').where('id', 'in', webhookRequest.body.events.map(e => e.id))
     expect(events.length).toEqual(webhookRequest.body.events.length)
   })
 })
