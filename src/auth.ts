@@ -170,19 +170,13 @@ export const validate = (redirect = true) => async (req: Express.Request, res: E
 
 export const authStorageInterceptor = async (req: Express.Request, res: Express.Response, next) => {
   // @ts-ignore
-  let session = req.cookies?.[opts.sessionCookieName];
-  if (req.query.code || session) {
-    // @ts-ignore
-    const tokenData = req.z.getTokenData()
-    if (!tokenData) {
-      throw new Error("Didn't get any token data from login")
-    }
+  const tokenData = req.z.getTokenData()
+  console.log("Zetkin token found in useragent cookies")
+  if (tokenData) {
     deleteAllTokens()
     await saveToken(tokenData, 'session');
-    next()
-  } else {
-    next();
   }
+  next();
 }
 
 export const zetkinRefreshAndReturn = async (req: Express.Request, res: Express.Response) => {
