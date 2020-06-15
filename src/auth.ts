@@ -58,6 +58,12 @@ export const zetkinOAuthClient = new ClientOAuth2({
   scopes: [],
 });
 
+export const getZetkinInstance = async () => {
+  const token = (await getValidToken())
+  zetkin.setTokenData(token)
+  return zetkin
+}
+
 interface Token extends Timestamps {
   access_token: string
   expires_in: string
@@ -92,6 +98,10 @@ export const getValidTokens = async () => {
   return tokens.filter(isValidToken)
 }
 
+export const getValidToken = async () => {
+  return (await getValidTokens())[0]
+}
+
 export const refreshToken = async () => {
   const tokens: Token[] = await db.table('tokens')
   for (const token of tokens) {
@@ -105,11 +115,12 @@ export const refreshToken = async () => {
 }
 
 export const zetkinLoginUrl = (req: Express.Request, redirectUri: string = req.url) => {
+  const pathname = url.parse(redirectUri).pathname
   // @ts-ignore
   return req.z.getLoginUrl(url.format({
     protocol: process.env.ZETKIN_CLIENT_PROTOCOL ? process.env.ZETKIN_CLIENT_PROTOCOL : opts.ssl? 'https' : 'http',
     host: url.parse(redirectUri).host || req.hostname,
-    pathname: url.parse(redirectUri).pathname,
+    pathname: pathname === '/zetkin/login' ? '/' : pathname,
   }))
 }
 
@@ -171,6 +182,10 @@ export const validate = (redirect = true) => async (req: Express.Request, res: E
 export const authStorageInterceptor = async (req: Express.Request, res: Express.Response, next) => {
   // @ts-ignore
   const tokenData = req.z.getTokenData()
+  delete req.cookies['apiAccessToken']
+  delete req.cookies['apiSession']
+  res.clearCookie('apiAccessToken')
+  res.clearCookie('apiSession');
   console.log("Zetkin token found in useragent cookies")
   if (tokenData) {
     deleteAllTokens()
@@ -179,19 +194,34 @@ export const authStorageInterceptor = async (req: Express.Request, res: Express.
   next();
 }
 
-export const zetkinRefreshAndReturn = async (req: Express.Request, res: Express.Response) => {
+export const zetkinRefresh = async (req: Express.Request, res: Express.Response) => {
   const refreshedToken = await refreshToken()
   if (refreshedToken.length) {
     // @ts-ignore
     req.z.setTokenData(refreshedToken[0])
-    return res.redirect(req.url)
   } else {
     throw new Error("Couldn't refresh token")
   }
 }
 
 export const zetkinLoginAndReturn = async (req: Express.Request, res: Express.Response) => {
-  return res.redirect(`/zetkin/login?redirect=${encodeURIComponent(req.url)}`)
+  const redirect = url.format({
+    protocol: process.env.ZETKIN_CLIENT_PROTOCOL || 'https',
+    host: req.get('host'),
+    pathname: url.parse(req.url).pathname
+  })
+  console.log('login then go to', redirect)
+  return res.redirect(`/zetkin/login?redirect=${encodeURIComponent(redirect)}`)
+}
+
+export const zetkinUpgradeAndReturn = async (req: Express.Request, res: Express.Response) => {
+  const redirect = url.format({
+    protocol: process.env.ZETKIN_CLIENT_PROTOCOL || 'https',
+    host: req.get('host'),
+    pathname: url.parse(req.url).pathname
+  })
+  console.log('upgrade then go to', redirect)
+  res.redirect(await getZetkinUpgradeUrl(redirect))
 }
 
 export const zetkinTokens = async (req: Express.Request, res: Express.Response) => {
@@ -216,20 +246,19 @@ export const zetkinLogout = async (req, res) => {
   res.redirect('/zetkin')
 }
 
+export const getZetkinUpgradeUrl = async (redirectUri: string) => {
+  const accessToken = (await getValidToken())?.access_token
+  let loginUrl = 'http://login.' + process.env.ZETKIN_DOMAIN + '/upgrade'
+    // @ts-ignore
+    + '?access_token=' + encodeURIComponent(accessToken)
+    + '&redirect_uri=' + encodeURIComponent(redirectUri)
+  return loginUrl
+}
+
 export const zetkinUpgradeToken = async (req, res) => {
-  try {
-    const accessToken = (await getValidTokens())[0]?.access_token
-    let loginUrl = 'http://login.' + process.env.ZETKIN_DOMAIN + '/upgrade'
-      // @ts-ignore
-      + '?access_token=' + encodeURIComponent(accessToken)
-      + '&redirect_uri=' + encodeURIComponent(url.format({
-        protocol: process.env.ZETKIN_CLIENT_PROTOCOL || 'https',
-        host: req.get('host'),
-        pathname: '/zetkin/tokens'
-      }))
-    res.redirect(loginUrl);
-  } catch (e) {
-    console.error(e)
-    res.redirect('/zetkin/tokens')
-  }
+  res.redirect(await getZetkinUpgradeUrl(url.format({
+    protocol: process.env.ZETKIN_CLIENT_PROTOCOL || 'https',
+    host: req.get('host'),
+    pathname: '/zetkin/tokens'
+  })));
 }

@@ -3,7 +3,7 @@ import express from 'express'
 import * as auth from './express-zetkin-auth';
 import cookieParser from 'cookie-parser'
 import sslRedirect from 'heroku-ssl-redirect'
-import { zetkinAuthOpts, validate, zetkinLogin, zetkinLogout, zetkinTokens, zetkinRefreshAndReturn, zetkinLoginUrl, authStorageInterceptor, zetkinLoginAndReturn, getValidTokens, zetkinUpgradeToken } from './auth';
+import { zetkinAuthOpts, validate, zetkinLogin, zetkinLogout, zetkinTokens, zetkinRefresh, zetkinLoginUrl, authStorageInterceptor, zetkinLoginAndReturn, getValidTokens, zetkinUpgradeToken, zetkinUpgradeAndReturn, getZetkinInstance } from './auth';
 import { handleGoCardlessWebhook, gocardlessQuery } from './gocardless';
 import * as bodyParser from 'body-parser';
 
@@ -33,15 +33,32 @@ export default () => {
   })
 
   app.get('/zetkin', validate(), async (req, res) => {
-    try {
+    const query = async () => {
       // @ts-ignore
-      const { data } = await req.z.resource('users', 'me').get()
+      const client = await getZetkinInstance()
+      const { data } = await client.resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'fields').get()
       return res.json(data)
+    }
+
+    try {
+      return await query()
     } catch (e) {
-      try {
-        await zetkinRefreshAndReturn(req, res)
-      } catch (e) {
-        await zetkinLoginAndReturn(req, res)
+      console.error("Zetkin request error", e)
+      if (e.httpStatus === 401) {
+        try {
+          console.log(e, 'Refresh')
+          await zetkinRefresh(req, res)
+          return await query()
+        } catch (e) {
+          console.log(e, 'Login')
+          return await zetkinLoginAndReturn(req, res)
+        }
+      } else if (e.httpStatus === 403) {
+        console.log('Upgrade')
+        return await zetkinUpgradeAndReturn(req, res)
+      } else {
+        console.log('Give up')
+        return res.redirect('/')
       }
     }
   })
