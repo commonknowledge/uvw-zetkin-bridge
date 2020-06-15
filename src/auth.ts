@@ -221,3 +221,21 @@ export const zetkinLogout = async (req, res) => {
   auth.logout(zetkinAuthOpts)
   res.redirect('/zetkin')
 }
+
+export const zetkinUpgradeToken = async (req, res) => {
+  try {
+    const accessToken = (await getValidTokens())[0]?.access_token
+    let loginUrl = 'http://login.' + process.env.ZETKIN_DOMAIN + '/upgrade'
+      // @ts-ignore
+      + '?access_token=' + encodeURIComponent(accessToken)
+      + '&redirect_uri=' + encodeURIComponent(url.format({
+        protocol: process.env.ZETKIN_CLIENT_PROTOCOL || 'https',
+        host: req.get('host'),
+        pathname: '/zetkin/tokens'
+      }))
+    res.redirect(loginUrl);
+  } catch (e) {
+    console.error(e)
+    res.redirect('/zetkin/tokens')
+  }
+}

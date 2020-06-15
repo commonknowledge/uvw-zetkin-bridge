@@ -3,7 +3,7 @@ import express from 'express'
 import * as auth from './express-zetkin-auth';
 import cookieParser from 'cookie-parser'
 import sslRedirect from 'heroku-ssl-redirect'
-import { zetkinAuthOpts, validate, zetkinLogin, zetkinLogout, zetkinTokens, zetkinRefreshAndReturn, zetkinLoginUrl, authStorageInterceptor, zetkinLoginAndReturn } from './auth';
+import { zetkinAuthOpts, validate, zetkinLogin, zetkinLogout, zetkinTokens, zetkinRefreshAndReturn, zetkinLoginUrl, authStorageInterceptor, zetkinLoginAndReturn, getValidTokens, zetkinUpgradeToken } from './auth';
 import { handleGoCardlessWebhook, gocardlessQuery } from './gocardless';
 import * as bodyParser from 'body-parser';
 
@@ -22,6 +22,7 @@ export default () => {
   app.use(authStorageInterceptor)
   app.get('/zetkin/login', zetkinLogin)
   app.get('/zetkin/logout', zetkinLogout);
+  app.get('/zetkin/upgrade', zetkinUpgradeToken)
   if (process.env.NODE_ENV !== 'production') {
     app.get('/zetkin/tokens', validate(false), zetkinTokens)
     app.get('/zetkin/refresh', validate(true), zetkinTokens)
