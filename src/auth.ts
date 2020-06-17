@@ -186,7 +186,6 @@ export const authStorageInterceptor = async (req: Express.Request, res: Express.
   delete req.cookies['apiSession']
   res.clearCookie('apiAccessToken')
   res.clearCookie('apiSession');
-  console.log("Zetkin token found in useragent cookies")
   if (tokenData) {
     deleteAllTokens()
     await saveToken(tokenData, 'session');

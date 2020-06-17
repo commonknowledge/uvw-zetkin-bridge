@@ -108,6 +108,29 @@ export const updateZetkinMember = async (
   return member
 }
 
+export const getZetkinCustomData = async (
+  personId: ZetkinMemberPost['id']
+) => {
+  const client = await getZetkinInstance()
+  const { data } = client
+    .resource('orgs', process.env.ZETKIN_ORG_ID, 'people', personId, 'fields')
+    .get()
+  return data?.data || [] as ZetkinCustomFields
+}
+
+export type ZetkinCustomFields = Datum[]
+
+export interface Datum {
+  field: Field;
+  value: string;
+}
+
+export interface Field {
+  id:   number;
+  slug: string;
+}
+
+
 export const addZetkinNoteToMember = async (personId: ZetkinMemberPost['id'], data: object) => {
   // console.log("addZetkinNoteToMember not implemented")
 }

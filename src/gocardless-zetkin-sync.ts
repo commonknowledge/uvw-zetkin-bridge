@@ -2,6 +2,7 @@ import GoCardless from 'gocardless-nodejs';
 import { getLinked } from './gocardless';
 import { updateZetkinMember, ZetkinMemberGet, addZetkinNoteToMember, upsertZetkinPerson, findZetkinMemberByQuery, findZetkinMemberBy } from './zetkin';
 import db from './db';
+import { update } from 'lodash';
 
 export const getInterestingEvents = (events: GoCardless.Event[]) => {
   const interestingPaymentActions = ["confirmed", "cancelled", "customer_approval_denied", "failed"]
@@ -27,51 +28,33 @@ export const upsertZetkinPersonByGoCardlessCustomer = async (customer: GoCardles
 }
 
 export const getZetkinPersonByGoCardlessCustomer = async (customer: GoCardless.Customer) => {
-  let member: ZetkinMemberGet
-
-  // Look for existing asserted links
-  // TODO: Relies on custom field search which Zetkin doesn't currently have
-  // member = await findZetkinMemberBy({ customFields: { goCardlessId: customer.id } })
-  // if (member) return member
-
-  // ---
-
-  // Then look for canonical identifiers
-  // 1. Email
-  member = (await findZetkinMemberByQuery(customer.email))[0]
-  if (member) {
-    // Save if found
+  function update(member: ZetkinMemberGet) {
     updateZetkinMember(member.id, {
       customFields: {
         gocardless_id: customer.id,
         gocardless_url: `https://manage.gocardless.com/customers/${customer.id}`
       }
     })
+  }
+
+  let member: ZetkinMemberGet
+
+  // Then look for canonical identifiers
+  // 1. Email
+  member = (await findZetkinMemberByQuery(customer.email))[0]
+  if (member) {
+    // Save if found
+    update(member)
     return member
   }
 
-  // 2. Phone
-  // Could do some work to normalize these
-  // https://www.npmjs.com/package/awesome-phonenumber
-  // member = await findZetkinMemberBy({ phone: customer.phone_number })
-
-  // if (member) {
-  //   // Save if found
-  //   updateZetkinMember(member.id, { customFields: { goCardlessId: customer.id } })
-  //   return member
-  // }
-
   // ---
   // Then fuzzy match on basic details
-
-  // member = await findZetkinMemberBy({
-  //   firstName: customer.given_name,
-  //   lastName: customer.family_name,
-  //   postcode: customer.postal_code
-  // })
-
+  // DON'T DO THIS, IT'S NOT ACCURATE ENOUGH
+  // member = (await findZetkinMemberByQuery(`${customer.given_name} ${customer.family_name}`))[0]
   // if (member) {
-  //   updateZetkinMember({ customFields: { goCardlessId: customer.id } })
+  //   // Save if found
+  //   update(member)
   //   return member
   // }
 

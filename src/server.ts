@@ -6,6 +6,7 @@ import sslRedirect from 'heroku-ssl-redirect'
 import { zetkinAuthOpts, validate, zetkinLogin, zetkinLogout, zetkinTokens, zetkinRefresh, zetkinLoginUrl, authStorageInterceptor, zetkinLoginAndReturn, getValidTokens, zetkinUpgradeToken, zetkinUpgradeAndReturn, getZetkinInstance } from './auth';
 import { handleGoCardlessWebhook, gocardlessQuery } from './gocardless';
 import * as bodyParser from 'body-parser';
+import { handleZammadWebhook } from './zammad';
 
 export default () => {
   // @ts-ignore
@@ -64,6 +65,7 @@ export default () => {
   })
 
   app.all('/webhooks/gocardless', handleGoCardlessWebhook)
+  app.all('/webhooks/zammad', handleZammadWebhook)
 
   app.all('/gocardless', gocardlessQuery)
 
