@@ -12,7 +12,7 @@
     "migrate": "knex migrate:latest",
     "makemigration": "knex migrate:make -x ts",
     "build": "tsc --project tsconfig.json",
-    "test": "NODE_ENV=test mocha -r ts-node/register src/**/*.test.ts --watch-files src/**/*",
+    "test": "NODE_ENV=test mocha -r ts-node/register src/**/*.test.ts --watch --watch-files src/**/*.ts",
     "ngrok": "~/ngrok http --subdomain=commonknowledge --region=eu 7000"
   },
   "engines": {
