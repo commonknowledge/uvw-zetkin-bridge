@@ -82,7 +82,7 @@ export const handleZammadWebhook = async (
   res: Express.Response<any>
 ) => {
   // Respond to Zammad
-  if (req.headers["user-agent"] !== 'Zammad User Agent') {
+  if (req.headers["user-agent"] !== 'Zammad User Agent' || !req.body) {
     return res.status(400).send() 
   }
   res.status(204).send()
@@ -98,7 +98,6 @@ export const handleZammadWebhook = async (
     return console.log("This user already has a zetkin data link")
     // TODO: Sync data back to Zetkin
   }
-  console.log("Found ticket data!", ticketData.ticket.id, customer.id)
 
   let zetkinPerson = await getZetkinPersonByZammadCustomer(customer)
   console.log("Found person", zetkinPerson)

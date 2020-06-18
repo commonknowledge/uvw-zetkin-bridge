@@ -45,6 +45,10 @@ describe('test database', () => {
     });
   })
 
+  beforeEach(async () => {
+    await db.table('events').delete('*')
+  });
+
   it('Running in test env', () => {
     expect(process.env.NODE_ENV).toEqual('test')
   })
@@ -58,8 +62,4 @@ describe('test database', () => {
     const events = await db.select<GoCardless.Event[]>('*').from('events')
     expect(events.length).toEqual(webhookRequest.body.events.length)
   })
-
-  after(() => {
-    db.table('events').delete('*')
-  });
 })
