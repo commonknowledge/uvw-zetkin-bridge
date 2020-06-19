@@ -2,8 +2,7 @@ import * as Express from 'express'
 import * as fetch from 'node-fetch'
 import { merge } from 'lodash'
 import * as path from 'path';
-import { getZetkinPersonByZammadCustomer, upsertZetkinPersonByZammadUser } from '../zammad/zetkin-sync';
-import { getZetkinCustomData } from '../zetkin/zetkin';
+import { getRelevantZetkinData } from './zetkin-sync';
 
 type URLType = fetch.RequestInfo | (string|number)[]
 
@@ -85,42 +84,30 @@ export const handleZammadWebhook = async (
     return res.status(400).send() 
   }
   res.status(204).send()
+  console.log("Received Zammad webhook")
 
   // Attach Zetkin user if necessary
+  console.log(req.body)
   const ticketData = await parseZammadWebhookBody(req.body)
   // console.log({ ticketData })
   const customer = ticketData?.customer
   if (!ticketData || !customer) {
-    return console.log("No ticketData or customer on this webhook")
+    // console.log("No ticketData or customer on this webhook")
+    return
   }
-  if (customer.number) {
-    return console.log("This user already has a zetkin data link")
-    // TODO: Sync data back to Zetkin
+  // if (customer.number) {
+  //   // console.log("This user already has a zetkin data link")
+  //   // TODO: Sync data back to Zetkin
+  //   return
+  // }
+
+  const data = await getRelevantZetkinData(ticketData)
+  if (data.customer) {
+    await updateZammadUser(
+      ticketData?.customer?.id,
+      data.customer
+    )
   }
-
-  let zetkinPerson = await getZetkinPersonByZammadCustomer(customer)
-  if (!zetkinPerson) {
-    try {
-    zetkinPerson = await upsertZetkinPersonByZammadUser(customer)
-    } catch(e) {
-      console.error(e)
-    }
-  }
-
-  const customData = await getZetkinCustomData(zetkinPerson.id)
-
-  const getCustomData = (slug: string) => customData.find(d => d.field.slug === slug)?.value
-
-  const updatedData = {
-    number: zetkinPerson.id,
-    gocardless_url: getCustomData('gocardless_url'),
-    gocardless_status: getCustomData('gocardless_status'),
-    gocardless_subscription: getCustomData('gocardless_subscription'),
-    first_payment_date: getCustomData('first_payment_date'),
-    last_payment_date: getCustomData('last_payment_date')
-  }
-
-  const updatedZammadUser = await updateZammadUser(customer.id, updatedData)
 }
 
 export const getTicketIdFromWebhookText = (text: string): number | null => {

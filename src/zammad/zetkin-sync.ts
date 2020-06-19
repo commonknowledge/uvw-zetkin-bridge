@@ -1,6 +1,44 @@
-import { ZammadUser } from './zammad';
-import { upsertZetkinPerson, ZetkinMemberGet, findZetkinMemberByQuery, updateZetkinMember, findZetkinMemberByFilters } from '../zetkin/zetkin';
+import { ZammadUser, ZammadTicket, updateZammadUser } from './zammad';
+import { ZetkinMemberGet, updateZetkinMember, findZetkinMemberByFilters, createZetkinMember, getZetkinCustomData, addZetkinNoteToMember } from '../zetkin/zetkin';
 import Phone from 'awesome-phonenumber';
+
+export const getRelevantZetkinData = async (ticketData: {
+  ticket?: ZammadTicket;
+  owner?: ZammadUser;
+  customer?: ZammadUser;
+}) => {
+  const { ticket, owner, customer } = ticketData
+
+  let zetkinPerson = await getZetkinPersonByZammadCustomer(customer)
+
+  if (!zetkinPerson && customer.firstname && customer.lastname) {
+    zetkinPerson = await createZetkinPersonByZammadUser(customer)
+  }
+
+  if (!zetkinPerson) return
+
+  const customData = await getZetkinCustomData(zetkinPerson.id)
+
+  const getCustomData = (slug: string) => customData.find(d => d.field.slug === slug)?.value
+
+  const updatedData = {
+    customer: {
+      firstname: zetkinPerson.first_name,
+      lastname: zetkinPerson.last_name,
+      email: zetkinPerson.email,
+      phone: zetkinPerson.phone,
+      addZetkinNoteToMember: zetkinPerson.street_address,
+      number: String(zetkinPerson.id),
+      gocardless_url: getCustomData('gocardless_url'),
+      gocardless_status: getCustomData('gocardless_status'),
+      gocardless_subscription: getCustomData('gocardless_subscription'),
+      first_payment_date: getCustomData('first_payment_date'),
+      last_payment_date: getCustomData('last_payment_date')
+    } as Partial<ZammadUser>
+  }
+
+  return updatedData
+}
 
 export const getZetkinPersonByZammadCustomer = async (customer: ZammadUser) => {
   function update(member: ZetkinMemberGet) {
@@ -16,16 +54,10 @@ export const getZetkinPersonByZammadCustomer = async (customer: ZammadUser) => {
 
   // Then look for canonical identifiers
   // 1. Email
-  member = (await findZetkinMemberByQuery(customer.email))?.[0]
-  if (member) {
-    // Save if found
-    update(member)
-    return member
-  }
-
   member = (await findZetkinMemberByFilters([
-    ['first_name', '==', customer.firstname],
-    ['last_name', '==', customer.lastname]
+    ['email', '==', /a-z/.test(customer.firstname) ? customer.email : undefined],
+    ['first_name', '==', /a-z/.test(customer.firstname) ? customer.firstname : undefined],
+    ['last_name', '==', /a-z/.test(customer.firstname) ? customer.lastname : undefined]
   ]))?.[0]
   if (member) {
     // Save if found
@@ -33,9 +65,10 @@ export const getZetkinPersonByZammadCustomer = async (customer: ZammadUser) => {
     return member
   }
 
+
   // Try some variations of the phone number
-  if (customer.phone) {
-    const number = new Phone(customer.phone, 'GB')
+  if (customer.mobile || customer.phone) {
+    const number = new Phone(customer.mobile || customer.phone, 'GB')
     const variations = {
         original: number.getNumber().replace(/\s/mgi, ''),
         local: number.getNumber('national').replace(/\s/mgi, ''),
@@ -57,8 +90,8 @@ export const getZetkinPersonByZammadCustomer = async (customer: ZammadUser) => {
   return null
 }
 
-export const upsertZetkinPersonByZammadUser = async (customer: ZammadUser) => {
-  return upsertZetkinPerson({
+export const createZetkinPersonByZammadUser = async (customer: ZammadUser) => {
+  return createZetkinMember({
     first_name: customer.firstname,
     last_name: customer.lastname,
     email: customer.email,

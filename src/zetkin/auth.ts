@@ -91,13 +91,14 @@ export const aggressivelyRetry = async (query: (client: { resource: any }) => an
       const client = await getZetkinInstance()
       const data = await query(client)
       if (mode !== 'upgrade') {
-        // console.log("Successful tokens", await (await getValidTokens()).map(t => t.access_token))
+        console.log("Successful tokens", await (await getValidTokens()).map(t => t.access_token))
       }
       return data
     } catch (e) {
       if (!!e?.httpStatus && ![401, 403].includes(e.httpStatus)) {
         // This is not an auth issue!
         console.error("Request was invalid.")
+        console.error(e)
         throw new Error(e)
       }
       if (e.toString().includes('Unable to sign without access token')) {

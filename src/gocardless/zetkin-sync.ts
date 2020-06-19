@@ -39,16 +39,8 @@ export const getZetkinPersonByGoCardlessCustomer = async (customer: GoCardless.C
 
   let member: ZetkinMemberGet
 
-  // Then look for canonical identifiers
-  // 1. Email
-  member = (await findZetkinMemberByQuery(customer.email))?.[0]
-  if (member) {
-    // Save if found
-    update(member)
-    return member
-  }
-
   member = (await findZetkinMemberByFilters([
+    ['email', '==', customer.email],
     ['first_name', '==', customer.given_name],
     ['last_name', '==', customer.family_name]
   ]))?.[0]
@@ -70,7 +62,7 @@ export const getZetkinPersonByGoCardlessCustomer = async (customer: GoCardless.C
     for (const phoneVariant of Object.values(variations)) {
       member = (await findZetkinMemberByFilters([
         ['phone', '==', phoneVariant]
-      ]))[0]
+      ]))?.[0]
       if (member) {
         // Save if found
         update(member)

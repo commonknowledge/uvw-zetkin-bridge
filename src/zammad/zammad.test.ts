@@ -2,6 +2,7 @@ import expect from 'expect'
 import supertest from 'supertest'
 import { parseZammadWebhookBody } from './zammad';
 import { DevServer } from '../dev';
+import { getRelevantZetkinData } from './zetkin-sync';
 
 // This data might change as the data relies on Zammad itself.
 // In future, mock Zammad API calls.
@@ -140,6 +141,27 @@ const exampleWebhooks = {
         "owner_id": 7,
       }
     }
+  },
+  'IdentifyByPhoneNumber': {
+    headers: {
+      'user-agent': 'Zammad User Agent',
+      'accept-encoding': 'gzip;q=1.0,deflate;q=0.6,identity;q=0.3',
+      accept: '*/*',
+      host: 'commonknowledge.eu.ngrok.io',
+      'content-type': 'application/x-www-form-urlencoded',
+      connection: 'close',
+      'content-length': '622',
+      'x-forwarded-for': '2a01:4f8:171:2063::2'
+    },
+    body: {
+      payload: '{"channel":"","username":"","icon_url":"https://zammad.com/assets/images/logo-200x200.png","mrkdwn":true,"text":"# yo o need help pñeade","attachments":[{"text":"_\\u003chttps://test-common-knowledge.zammad.com/#ticket/zoom/43|Ticket#202006195900027\\u003e: Updated by Gemma Copeland at 19/06/2020 15:07 (UTC)_\\n\\n\\n\\nTest33","mrkdwn_in":["text"],"color":"#faab00"}]}'
+    },
+    metadata: {
+      "id": 43,
+      "number": "202006195900027",
+      "title": "yo o need help pñeade",
+      "customer_id": 30,
+    }
   }
 }
 
@@ -200,5 +222,13 @@ describe('Zammad webhook receiver', () => {
     expect(parsedData.customer?.gocardless_subscription).toBeDefined()
     expect(parsedData.customer?.first_payment_date).toBeDefined()
     expect(parsedData.customer?.last_payment_date).toBeDefined()
+  })
+
+  it("Zammad customer is identified by phone number via Zetkin", async function () {
+    this.timeout(7500); 
+    const fixture = exampleWebhooks["IdentifyByPhoneNumber"]
+    const parsedData = await parseZammadWebhookBody(fixture.body as any)
+    const relevantData = await getRelevantZetkinData(parsedData)
+    expect(relevantData?.customer.number).toEqual(5316)
   })
 })

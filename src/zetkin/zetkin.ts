@@ -68,10 +68,12 @@ type PersonFilterParam = 'email' | 'phone' | 'first_name' | 'last_name'
 type FilterOperator = '==' | '>' | '>=' | '<' | '<=' | '!=' | '*='
 type FilterValue = (string|number|boolean)
 export const findZetkinMemberByFilters = async (filters: Array<[PersonFilterParam, FilterOperator, FilterValue]>, p: number | null = null, pp: number | null = null): Promise<ZetkinMemberGet[] | null> => {
+  const validFilters = filters.filter(f => f[2] !== undefined && f[2] !== null && f[2] !== '')
+  if (validFilters.length === 0) return []
   const data = await aggressivelyRetry(async (client) =>
     await client
       .resource('orgs', process.env.ZETKIN_ORG_ID, 'people')
-      .get(p, pp, filters)
+      .get(p, pp, validFilters)
   )
   return data?.data?.data
 }
