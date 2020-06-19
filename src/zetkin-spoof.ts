@@ -1,8 +1,10 @@
-import { zetkinLoginUrl, zetkinUpgradeToken, getZetkinUpgradeUrl } from './auth';
+import { zetkinLoginUrl, zetkinUpgradeToken, getZetkinUpgradeUrl, getZetkinInstance, getValidTokens } from './auth';
 import puppeteer from 'puppeteer'
 import * as url from 'url';
+import { wait } from './utils';
 
 export const spoofLogin = async () => {
+  console.log("Before login", await getValidTokens())
   // Spin up a useragent spoofer
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
@@ -18,6 +20,9 @@ export const spoofLogin = async () => {
   // Get redirected back to ngrok so that the server can request an OAuth2 token via code
   await page.waitForNavigation();
   await browser.close();
+  await wait(1000)
+  console.log("After login", await getValidTokens())
+  const client = getZetkinInstance()
 }
 
 export const spoofUpgrade = async () => {

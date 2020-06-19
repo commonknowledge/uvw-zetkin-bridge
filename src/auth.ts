@@ -7,6 +7,7 @@ import * as url from 'url'
 import * as auth from './express-zetkin-auth';
 import { spoofLogin, spoofUpgrade } from './zetkin-spoof';
 import { wait } from './utils';
+import { uniqueId } from 'lodash';
 
 /**
  * Zetkin auth
@@ -60,8 +61,10 @@ export const zetkinOAuthClient = new ClientOAuth2({
   scopes: [],
 });
 
-export const getZetkinInstance = async () => {
-  const token = (await getValidToken())
+export const getZetkinInstance = async (token?: Token) => {
+  if (!token) {
+    token = (await getValidToken())
+  }
   zetkin.setTokenData(token)
   return zetkin
 }
@@ -76,52 +79,61 @@ export const getZetkinInstance = async () => {
  * @param args 
  */
 export const aggressivelyRetry = async (query: (client: { resource: any }) => any, maxRetries = 5) => {
+  const requestId = uniqueId()
   let mode: 'fail' | 'login' | 'refresh' | 'upgrade' = null
   let retryCount = 0
   async function run() {
-    retryCount++
+    retryCount = retryCount + 1
+    // console.log(`Zetkin API request`, { requestId, retryCount, mode })
+    if (retryCount > maxRetries) { mode = 'fail' }
     if (mode === 'fail') return
-    if (retryCount > maxRetries) return
     try {
       const client = await getZetkinInstance()
       const data = await query(client)
-      console.log(await getValidTokens())
+      if (mode !== 'upgrade') {
+        // console.log("Successful tokens", await (await getValidTokens()).map(t => t.access_token))
+      }
       return data
     } catch (e) {
-      // console.log("QUERY FAILED")
+      if (!!e?.httpStatus && ![401, 403].includes(e.httpStatus)) {
+        // This is not an auth issue!
+        console.error("Request was invalid.")
+        throw new Error(e)
+      }
       if (e.toString().includes('Unable to sign without access token')) {
         mode = 'login'
-        // console.log('Login', await getValidTokens())
+        // console.log('Login')
         await spoofLogin()
         await wait(1000)
-        const data = await run()
-        return data
+        return await run()
       } else if (e.httpStatus === 401) {
         try {
           mode = 'refresh'
-          // console.log('Refresh', await getValidTokens())
+          // console.log('Refresh')
           await zetkinRefresh()
-          const data = await run()
-          return data
+          return await run()
         } catch (e) {
           mode = 'login'
-          // console.log('Login', await getValidTokens())
+          // console.log('Login')
           await spoofLogin()
           await wait(1000)
-          const data = await run()
-          return data
+          return await run()
         }
-      } else if (e.httpStatus === 403) {
+      } else if (e.httpStatus === 403 && mode !== 'upgrade') {
         mode = 'upgrade'
-        // console.log("Upgrade", await getValidTokens())
+        // console.log("Upgrade")
         await spoofUpgrade()
         await wait(500)
-        const data = await run()
-        return data
+        return await run()
       } else {
-        mode = 'fail'
-        // console.log('Give up', await getValidTokens())
-        return
+        // console.log('Give up')
+        console.error(e)
+        if (mode === 'upgrade') {
+          throw new Error("Could not make request. Failed to upgrade. Maybe the OTP is broken?")
+        } else {
+          mode = 'fail'
+        }
+        throw new Error('Could not make request. Failed to automatically auth to Zetkin.')
       }
     }
   }
@@ -308,7 +320,7 @@ export const zetkinLoginAndReturn = async (req: Express.Request, res: Express.Re
     host: req.get('host'),
     pathname: url.parse(req.url).pathname
   })
-  console.log('login then go to', redirect)
+  // console.log('login then go to', redirect)
   return res.redirect(`/zetkin/login?redirect=${encodeURIComponent(redirect)}`)
 }
 
@@ -318,7 +330,7 @@ export const zetkinUpgradeAndReturn = async (req: Express.Request, res: Express.
     host: req.get('host'),
     pathname: url.parse(req.url).pathname
   })
-  console.log('upgrade then go to', redirect)
+  // console.log('upgrade then go to', redirect)
   res.redirect(await getZetkinUpgradeUrl(redirect))
 }
 

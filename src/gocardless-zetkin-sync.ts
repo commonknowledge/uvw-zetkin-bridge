@@ -1,6 +1,6 @@
 import GoCardless from 'gocardless-nodejs';
 import { getLinked } from './gocardless';
-import { updateZetkinMember, ZetkinMemberGet, addZetkinNoteToMember, upsertZetkinPerson, findZetkinMemberByQuery, findZetkinMemberBy, findZetkinMemberByFilters } from './zetkin';
+import { updateZetkinMember, ZetkinMemberGet, addZetkinNoteToMember, upsertZetkinPerson, findZetkinMemberByQuery, findZetkinMemberByFilters } from './zetkin';
 import db from './db';
 import Phone from 'awesome-phonenumber'
 
@@ -16,7 +16,7 @@ export const upsertZetkinPersonByGoCardlessCustomer = async (customer: GoCardles
     last_name: customer.family_name,
     email: customer.email,
     phone: customer.phone_number,
-    street_address:`${customer.address_line1} ${customer.address_line2} ${customer.address_line3} ${customer.city} ${customer.region} ${customer.country_code}`,
+    street_address: [customer.address_line1, customer.address_line2, customer.address_line3, customer.city, customer.region, customer.country_code].filter(Boolean).join(',\n'),
     city: customer.city,
     zip_code: customer.postal_code,
     customFields: {
@@ -41,7 +41,7 @@ export const getZetkinPersonByGoCardlessCustomer = async (customer: GoCardless.C
 
   // Then look for canonical identifiers
   // 1. Email
-  member = (await findZetkinMemberByQuery(customer.email))[0]
+  member = (await findZetkinMemberByQuery(customer.email))?.[0]
   if (member) {
     // Save if found
     update(member)
@@ -51,7 +51,7 @@ export const getZetkinPersonByGoCardlessCustomer = async (customer: GoCardless.C
   member = (await findZetkinMemberByFilters([
     ['first_name', '==', customer.given_name],
     ['last_name', '==', customer.family_name]
-  ]))[0]
+  ]))?.[0]
   if (member) {
     // Save if found
     update(member)

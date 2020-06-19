@@ -112,7 +112,8 @@ import expect from 'expect'
 import { getZetkinInstance, getValidToken, getValidTokens, aggressivelyRetry } from './auth';
 import { spoofLogin, spoofUpgrade } from './zetkin-spoof';
 import { wait } from './utils';
-import { DevServer } from './dev.test';
+import { DevServer } from './dev';
+import { createZetkinMember, ZetkinMemberGet, deleteZetkinMember, updateZetkinMemberCustomFields, findZetkinMemberByFilters, findZetkinMemberByQuery, getZetkinMemberById } from './zetkin';
 const devServer = new DevServer()
 
 describe('Zetkin authenticator', async function () {
@@ -141,5 +142,103 @@ describe('Zetkin authenticator', async function () {
       client.resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'fields').get()
     )
     expect(data).toEqual(expectedCustomFields)
+  })
+})
+
+describe('Zetkin CRUD operations', function () {
+  const fixtures = {
+    member: {
+      first_name: "TEST",
+      last_name: "TEST",
+      email: "TEST@TESt.TEST",
+      phone: "07704100000"
+    },
+    customFields: {
+      gocardless_id: 1,
+      gocardless_url: "https://commonknowledge.coop"
+    },
+    deleteCustomFields: undefined
+  }
+
+  fixtures.deleteCustomFields = {}
+  Object.keys(fixtures.customFields).forEach(key => fixtures.deleteCustomFields[key] = null)
+
+  let memberId: number
+
+  before(async function() { 
+    this.timeout(60000)
+    await devServer.setup()
+    // Don't allow the test to be tricked by previous tests!
+    const members = await findZetkinMemberByFilters([
+      ['email', '==', fixtures.member.email]
+    ])
+    for (const member of members) {
+      await deleteZetkinMember(member.id)
+    }
+  })
+
+  after(async function() {
+    this.timeout(60000)
+    await devServer.teardown()
+  })
+
+  it ('Should create a new member', async function () {
+    this.timeout(60000)
+    let member
+    member = await createZetkinMember(fixtures.member)
+    memberId = member.id
+    expect(member.first_name).toEqual(fixtures.member.first_name)
+  })
+
+  it ('Find a member by ID', async function () {
+    this.timeout(60000)
+    if (!memberId) throw new Error('Badly setup test')
+    const member = await getZetkinMemberById(memberId)
+    expect(member.first_name).toEqual(fixtures.member.first_name)
+  })
+
+  it ('Find a member by query', async function () {
+    this.timeout(60000)
+    if (!memberId) throw new Error('Badly setup test')
+    const members = await findZetkinMemberByQuery(fixtures.member.email)
+    // @ts-ignore
+    expect(members).toBeInstanceOf(Array)
+    expect(members.length).toBeGreaterThan(0)
+    expect(members[0].first_name).toEqual(fixtures.member.first_name)
+  })
+
+  it ('Find a member by filter', async function () {
+    this.timeout(60000)
+    if (!memberId) throw new Error('Badly setup test')
+    const members = await findZetkinMemberByFilters([
+      ['phone', '==', fixtures.member.phone]
+    ])
+    expect(members).toBeInstanceOf(Array)
+    expect(members.length).toBeGreaterThan(0)
+    expect(members[0]?.first_name).toEqual(fixtures.member.first_name)
+  })
+
+  it ('Adds and removes custom field values to a member', async function () {
+    this.timeout(60000)
+    if (!memberId) throw new Error('Badly setup test')
+    const fields = await updateZetkinMemberCustomFields(memberId, fixtures.customFields)
+    expect(fields).toEqual(Object.values(fixtures.customFields).map(String))
+  })
+
+  it ('Remove that custom field value from a member', async function () {
+    this.timeout(60000)
+    if (!memberId) throw new Error('Badly setup test')
+    const fields = await updateZetkinMemberCustomFields(memberId, fixtures.deleteCustomFields)
+    expect(fields).toBeDefined()
+  })
+
+  it ('Delete the new member', async function () {
+    this.timeout(60000)
+    if (!memberId) throw new Error('Badly setup test')
+    await deleteZetkinMember(memberId)
+    const members = await findZetkinMemberByFilters([
+      ['phone', '==', fixtures.member.phone]
+    ])
+    expect(members.length).toEqual(0)
   })
 })

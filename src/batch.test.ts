@@ -1,6 +1,6 @@
 import expect from 'expect'
 import { syncGoCardlessCustomersToZetkin } from './batch';
-import { DevServer } from './dev.test';
+import { DevServer } from './dev';
 
 const devServer = new DevServer()
 
@@ -14,8 +14,10 @@ describe('GoCardless batch process', () => {
     await devServer.teardown()
   })
 
-  // it('Retrieves a list of customers', async () => {
-  //   const customers = await syncGoCardlessCustomersToZetkin(100)
-  //   expect(customers).toHaveLength(100)
-  // })
+  it('Matches all gocardless customers to zetkin people', async function () {
+    this.timeout(60000)
+    // const out = await syncGoCardlessCustomersToZetkin(2)
+    // console.log(out)
+    // expect(out).toHaveLength(2)
+  })
 })

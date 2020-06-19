@@ -1,14 +1,11 @@
 import expect from 'expect'
 import db from "./db"
-import path from 'path'
 import { mapEventToRow } from './gocardless';
 import GoCardless from 'gocardless-nodejs';
-import createServer from './server';
-import ngrok from 'ngrok'
 import * as url from 'url';
 import fetch from 'node-fetch';
 import { helloWorld } from './server';
-import { wait } from './utils';
+import { DevServer } from './dev';
 
 const webhookRequest = {
   body: {
@@ -44,71 +41,6 @@ const webhookRequest = {
   }
 }
 
-const port = 4041
-const getDefaultDevConfig = () => ({
-  server: undefined,
-  ngrokURL: undefined,
-  port,
-  app: createServer(),
-  ngrokConfig: {
-    protocol: process.env.ZETKIN_CLIENT_PROTOCOL, // http|tcp|tls, defaults to http
-    addr: port,
-    subdomain: process.env.ZETKIN_NGROK_DOMAIN.split('.')[0], // reserved tunnel name https://alex.ngrok.io
-    authtoken: process.env.NGROK_TOKEN, // your authtoken from ngrok.com
-    region: process.env.ZETKIN_NGROK_REGION as any || 'eu', // one of ngrok regions (us, eu, au, ap), defaults to us
-  }
-})
-
-export class DevServer {
-  config = getDefaultDevConfig()
-
-  async setupServer () {
-    this.config.server = this.config.app.listen(this.config.port)
-  }
-  
-  async setupProxy () {
-    this.config.ngrokURL = await ngrok.connect(this.config.ngrokConfig);
-  }
-
-  async setupDb () {
-    await db.migrate.latest({
-      directory: path.join(__dirname, '../migrations'),
-    });
-  }
-
-  async setup() {
-    await this.setupDb()
-    await this.setupServer()
-    await this.setupProxy()
-  }
-
-  async teardownServer () {
-    await this.config.server.close()
-
-  }
-
-  async teardownProxy () {
-    await ngrok.disconnect();
-  }
-
-  async teardownDb () {
-    await db.table('events').delete('*')
-    await db.table('tokens').delete('*')
-  }
-
-  async teardown () {
-    try {
-    await this.teardownDb()
-    } catch(e) {}
-    try {
-      await this.teardownServer()
-    } catch (e) {}
-    try {
-      await this.teardownProxy()
-    } catch (e) {}
-  }
-}
-
 const devServer = new DevServer()
 
 describe('Dev server', function () {
@@ -122,7 +54,7 @@ describe('Dev server', function () {
   })
   
   it('Should have a running dev server', async function () {
-    const res = await fetch(url.format({ protocol: 'http', hostname: 'localhost', port }))
+    const res = await fetch(url.format({ protocol: 'http', hostname: 'localhost', port: devServer.config.port }))
     const body = await res.json()
     expect(body).toEqual(helloWorld)
   })
@@ -132,7 +64,7 @@ describe('Dev server', function () {
            
     await expect(
       async () => {
-        const res = await fetch(url.format({ protocol: 'http', hostname: 'localhost', port }))
+        const res = await fetch(url.format({ protocol: 'http', hostname: 'localhost', port: devServer.config.port }))
         const body = await res.json() 
       })
       .rejects

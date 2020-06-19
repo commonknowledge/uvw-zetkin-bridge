@@ -18,5 +18,5 @@ export const syncGoCardlessCustomersToZetkin = async (limit?: number) => {
     matches.push({ customer, zetkinMember })
   }
   // Update custom fields on that Zetkin person for GoCardless
-  return false
+  return matches
 }

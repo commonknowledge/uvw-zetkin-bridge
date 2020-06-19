@@ -2,7 +2,7 @@ import expect from 'expect'
 import supertest from 'supertest'
 import db from "./db"
 import GoCardless from 'gocardless-nodejs';
-import { DevServer } from './dev.test';
+import { DevServer } from './dev';
 
 const webhookRequest = {
   body: {
@@ -63,11 +63,11 @@ const devServer = new DevServer()
 describe('Gocardless webhook receiver', () => {
   beforeEach(async function() { 
     this.timeout(10000)
-    await devServer.setupDb()
+    await devServer.setup()
   })
 
   afterEach(async function() {
-    await devServer.teardownDb()
+    await devServer.teardown()
   })
 
   it('Returns a 204 response if the request is valid', async () => {

@@ -17,7 +17,7 @@ export const getZetkinPersonByZammadCustomer = async (customer: ZammadUser) => {
 
   // Then look for canonical identifiers
   // 1. Email
-  member = (await findZetkinMemberByQuery(customer.email))[0]
+  member = (await findZetkinMemberByQuery(customer.email))?.[0]
   if (member) {
     // Save if found
     update(member)
@@ -27,7 +27,7 @@ export const getZetkinPersonByZammadCustomer = async (customer: ZammadUser) => {
   member = (await findZetkinMemberByFilters([
     ['first_name', '==', customer.firstname],
     ['last_name', '==', customer.lastname]
-  ]))[0]
+  ]))?.[0]
   if (member) {
     // Save if found
     update(member)
