@@ -190,10 +190,15 @@ describe('Zammad webhook receiver', () => {
     expect(parsedData.ticket?.customer_id).toEqual(fixture.metadata.ticket.customer_id)
   })
 
-  it("Zammad has a `number` property for customers' Zetkin ID", async function () {
+  it("Zammad customer has properties for Zetkin sync data", async function () {
     this.timeout(7500); 
     const fixture = exampleWebhooks["Create new ticket"]
     const parsedData = await parseZammadWebhookBody(fixture.body as any)
     expect(parsedData.customer?.number).toBeDefined()
+    expect(parsedData.customer?.gocardless_url).toBeDefined()
+    expect(parsedData.customer?.gocardless_status).toBeDefined()
+    expect(parsedData.customer?.gocardless_subscription).toBeDefined()
+    expect(parsedData.customer?.first_payment_date).toBeDefined()
+    expect(parsedData.customer?.last_payment_date).toBeDefined()
   })
 })

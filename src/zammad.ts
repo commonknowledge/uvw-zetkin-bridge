@@ -100,34 +100,28 @@ export const handleZammadWebhook = async (
   }
 
   let zetkinPerson = await getZetkinPersonByZammadCustomer(customer)
-  console.log("Found person", zetkinPerson)
   if (!zetkinPerson) {
     try {
     zetkinPerson = await upsertZetkinPersonByZammadUser(customer)
-    console.log("Created person", zetkinPerson)
     } catch(e) {
       console.error(e)
     }
   }
 
   const customData = await getZetkinCustomData(zetkinPerson.id)
-  
-  console.log("Person custom data", customData)
+
+  const getCustomData = (slug: string) => customData.find(d => d.field.slug === slug)?.value
 
   const updatedData = {
     number: zetkinPerson.id,
-    gocardless_url: customData.find(d => d.field.slug === 'gocardless_url'),
-    gocardless_status: customData.find(d => d.field.slug === 'gocardless_status'),
-    gocardless_subscription: customData.find(d => d.field.slug === 'gocardless_subscription'),
-    first_payment_date: customData.find(d => d.field.slug === 'first_payment_date'),
-    last_payment_date: customData.find(d => d.field.slug === 'last_payment_date')
+    gocardless_url: getCustomData('gocardless_url'),
+    gocardless_status: getCustomData('gocardless_status'),
+    gocardless_subscription: getCustomData('gocardless_subscription'),
+    first_payment_date: getCustomData('first_payment_date'),
+    last_payment_date: getCustomData('last_payment_date')
   }
 
-  console.log("Patching zammad user", updatedData)
-
   const updatedZammadUser = await updateZammadUser(customer.id, updatedData)
-
-  console.log({ updatedZammadUser })
 }
 
 export const getTicketIdFromWebhookText = (text: string): number | null => {
@@ -274,7 +268,12 @@ export interface ZammadUser {
   created_by_id:                number;
   created_at:                   Date;
   updated_at:                   Date;
-  number:                       null;
+  number:                       string | null;
+  gocardless_url: string | null
+  gocardless_status: string | null
+  gocardless_subscription: string | null
+  first_payment_date: string | null
+  last_payment_date: string | null
   role_ids:                     number[];
   organization_ids:             any[];
   authorization_ids:            any[];
