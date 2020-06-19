@@ -67,6 +67,16 @@ export const findZetkinMemberByQuery = async (q: string): Promise<ZetkinMemberGe
     throw e
   }
 }
+
+type PersonFilterParam = 'email' | 'phone' | 'first_name' | 'last_name'
+type FilterOperator = '==' | '>' | '>=' | '<' | '<=' | '!=' | '*='
+type FilterValue = (string|number|boolean)
+export const findZetkinMemberByFilters = async (filters: Array<[PersonFilterParam, FilterOperator, FilterValue]>, p: number | null = null, pp: number | null = null): Promise<ZetkinMemberGet[] | null> => {
+  try {
+    const client = await getZetkinInstance()
+    const { data } = await aggressivelyRetry(async () =>
+      client.resource('orgs', process.env.ZETKIN_ORG_ID, 'search', 'person').get(p, pp, filters)
+    )
     return data.data
   } catch (e) {
     console.error(e)

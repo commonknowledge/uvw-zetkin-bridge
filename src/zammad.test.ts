@@ -171,7 +171,8 @@ describe('Zammad webhook receiver', () => {
     }
   })
 
-  it('Get the ticket metadata for a webhook payload', async () => {
+  it('Get the ticket metadata for a webhook payload', async function () {
+    this.timeout(7500); 
     const fixture = exampleWebhooks["Create new ticket"]
     const parsedData = await parseZammadWebhookBody(fixture.body as any)
     expect(parsedData.ticket?.id).toEqual(fixture.metadata.ticket.id)
@@ -179,7 +180,8 @@ describe('Zammad webhook receiver', () => {
     expect(parsedData.ticket?.customer_id).toEqual(fixture.metadata.ticket.customer_id)
   })
 
-  it("Zammad has a `number` property for customers' Zetkin ID", async () => {
+  it("Zammad has a `number` property for customers' Zetkin ID", async function () {
+    this.timeout(7500); 
     const fixture = exampleWebhooks["Create new ticket"]
     const parsedData = await parseZammadWebhookBody(fixture.body as any)
     expect(parsedData.customer?.number).toBeDefined()

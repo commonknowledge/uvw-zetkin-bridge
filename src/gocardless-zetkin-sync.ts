@@ -1,8 +1,8 @@
 import GoCardless from 'gocardless-nodejs';
 import { getLinked } from './gocardless';
-import { updateZetkinMember, ZetkinMemberGet, addZetkinNoteToMember, upsertZetkinPerson, findZetkinMemberByQuery, findZetkinMemberBy } from './zetkin';
+import { updateZetkinMember, ZetkinMemberGet, addZetkinNoteToMember, upsertZetkinPerson, findZetkinMemberByQuery, findZetkinMemberBy, findZetkinMemberByFilters } from './zetkin';
 import db from './db';
-import { update } from 'lodash';
+import Phone from 'awesome-phonenumber'
 
 export const getInterestingEvents = (events: GoCardless.Event[]) => {
   const interestingPaymentActions = ["confirmed", "cancelled", "customer_approval_denied", "failed"]
@@ -48,17 +48,50 @@ export const getZetkinPersonByGoCardlessCustomer = async (customer: GoCardless.C
     return member
   }
 
-  // ---
-  // Then fuzzy match on basic details
-  // DON'T DO THIS, IT'S NOT ACCURATE ENOUGH
-  // member = (await findZetkinMemberByQuery(`${customer.given_name} ${customer.family_name}`))[0]
-  // if (member) {
-  //   // Save if found
-  //   update(member)
-  //   return member
-  // }
+  member = (await findZetkinMemberByFilters([
+    ['first_name', '==', customer.given_name],
+    ['last_name', '==', customer.family_name]
+  ]))[0]
+  if (member) {
+    // Save if found
+    update(member)
+    return member
+  }
+
+  // Try some variations of the phone number
+  if (customer.phone_number) {
+    const number = new Phone(customer.phone_number, 'GB')
+    const variations = {
+        original: number.getNumber().replace(/\s/mgi, ''),
+        local: number.getNumber('national').replace(/\s/mgi, ''),
+        international: number.getNumber('international').replace(/\s/mgi, ''),
+    }
+
+    for (const phoneVariant of Object.values(variations)) {
+      member = (await findZetkinMemberByFilters([
+        ['phone', '==', phoneVariant]
+      ]))[0]
+      if (member) {
+        // Save if found
+        update(member)
+        return member
+      }
+    }
+  }
 
   return null
+}
+
+export const getOrCreateZetkinPersonByGoCardlessCustomer = async (customer: GoCardless.Customer): Promise<ZetkinMemberGet> => {
+  let zetkinPerson = await getZetkinPersonByGoCardlessCustomer(customer)
+  if (!zetkinPerson) {
+    try {
+    zetkinPerson = await upsertZetkinPersonByGoCardlessCustomer(customer)
+    } catch(e) {
+      console.error(e)
+    }
+  }
+  return zetkinPerson
 }
 
 export const processEvent = async (event: GoCardless.Event) => {
@@ -70,14 +103,7 @@ export const processEvent = async (event: GoCardless.Event) => {
       const payment: GoCardless.Payment = await getLinked(event, 'payment')
       const customer: GoCardless.Customer = await getLinked(payment, 'mandate', 'customer')
 
-      let zetkinPerson = await getZetkinPersonByGoCardlessCustomer(customer)
-      if (!zetkinPerson) {
-        try {
-        zetkinPerson = await upsertZetkinPersonByGoCardlessCustomer(customer)
-        } catch(e) {
-          console.error(e)
-        }
-      }
+      let zetkinPerson = await getOrCreateZetkinPersonByGoCardlessCustomer(customer)
 
       await db.table('events')
         .where('id', '=', event.id)
@@ -97,14 +123,7 @@ export const processEvent = async (event: GoCardless.Event) => {
       const subscription: GoCardless.Subscription = await getLinked(event, 'subscription')
       const customer: GoCardless.Customer = await getLinked(subscription, 'mandate', 'customer')
 
-      let zetkinPerson = await getZetkinPersonByGoCardlessCustomer(customer)
-      if (!zetkinPerson) {
-        try {
-        zetkinPerson = await upsertZetkinPersonByGoCardlessCustomer(customer)
-        } catch(e) {
-          console.error(e)
-        }
-      }
+      let zetkinPerson = await getOrCreateZetkinPersonByGoCardlessCustomer(customer)
 
       await db.table('events')
         .where('id', '=', event.id)

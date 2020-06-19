@@ -1,6 +1,7 @@
 import { ZammadUser } from './zammad';
-import { upsertZetkinPerson, ZetkinMemberGet, findZetkinMemberByQuery, updateZetkinMember } from './zetkin';
+import { upsertZetkinPerson, ZetkinMemberGet, findZetkinMemberByQuery, updateZetkinMember, findZetkinMemberByFilters } from './zetkin';
 import { update } from 'lodash';
+import Phone from 'awesome-phonenumber';
 
 export const getZetkinPersonByZammadCustomer = async (customer: ZammadUser) => {
   function update(member: ZetkinMemberGet) {
@@ -23,15 +24,36 @@ export const getZetkinPersonByZammadCustomer = async (customer: ZammadUser) => {
     return member
   }
 
-  // ---
-  // Then fuzzy match on basic details
-  // DON'T DO THIS, IT'S NOT ACCURATE ENOUGH
-  // member = (await findZetkinMemberByQuery(`${customer.firstname} ${customer.lastname}`))[0]
-  // if (member) {
-  //   // Save if found
-  //   update(member)
-  //   return member
-  // }
+  member = (await findZetkinMemberByFilters([
+    ['first_name', '==', customer.firstname],
+    ['last_name', '==', customer.lastname]
+  ]))[0]
+  if (member) {
+    // Save if found
+    update(member)
+    return member
+  }
+
+  // Try some variations of the phone number
+  if (customer.phone) {
+    const number = new Phone(customer.phone, 'GB')
+    const variations = {
+        original: number.getNumber().replace(/\s/mgi, ''),
+        local: number.getNumber('national').replace(/\s/mgi, ''),
+        international: number.getNumber('international').replace(/\s/mgi, ''),
+    }
+
+    for (const phoneVariant of Object.values(variations)) {
+      member = (await findZetkinMemberByFilters([
+        ['phone', '==', phoneVariant]
+      ]))[0]
+      if (member) {
+        // Save if found
+        update(member)
+        return member
+      }
+    }
+  }
 
   return null
 }
