@@ -14,11 +14,11 @@ describe('GoCardless batch process', () => {
     await devServer.teardown()
   })
 
-  // it('Matches all gocardless customers to zetkin people', async function () {
-  //   const batchSize = 20
-  //   this.timeout(60000)
-  //   const out = await syncGoCardlessCustomersToZetkin(batchSize)
-  //   console.log(out)
-  //   expect(out).toHaveLength(batchSize)
-  // })
+  it('Matches all gocardless customers to zetkin people', async function () {
+    this.timeout(1000000000)
+    const batchSize = 10000
+    const out = await syncGoCardlessCustomersToZetkin(batchSize)
+    console.log(out)
+    expect(out).toHaveLength(batchSize)
+  })
 })

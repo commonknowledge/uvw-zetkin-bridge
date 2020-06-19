@@ -44,6 +44,7 @@ export const getZetkinPersonByZammadCustomer = async (customer: ZammadUser) => {
   function update(member: ZetkinMemberGet) {
     updateZetkinMember(member.id, {
       customFields: {
+        origin: 'Zammad Case',
         zammad_id: customer.id,
         zammad_url: new URL(`/#user/profile/${customer.id}`, process.env.ZAMMAD_BASE_URL)
       }
@@ -96,6 +97,11 @@ export const createZetkinPersonByZammadUser = async (customer: ZammadUser) => {
     last_name: customer.lastname,
     email: customer.email,
     phone: customer.phone,
-    city: customer.city
+    city: customer.city,
+    customFields: {
+      origin: 'Zammad Case',
+      zammad_id: customer.id,
+      zammad_url: new URL(`/#user/profile/${customer.id}`, process.env.ZAMMAD_BASE_URL)
+    }
   })
 }
