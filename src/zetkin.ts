@@ -1,4 +1,4 @@
-import { zetkin, getZetkinInstance } from './auth';
+import { zetkin, getZetkinInstance, aggressivelyRetry } from './auth';
 // https://developer.zetkin.org/reference/
 
 export type ZetkinMemberMetadata = {
@@ -58,7 +58,15 @@ export const getZetkinMemberById = async (id: ZetkinMemberPost['id']): Promise<Z
 export const findZetkinMemberByQuery = async (q: string): Promise<ZetkinMemberGet[] | null> => {
   try {
     const client = await getZetkinInstance()
-    const { data } = await client.resource('orgs', process.env.ZETKIN_ORG_ID, 'search', 'person').post({ q })
+    const { data } = await aggressivelyRetry(async () =>
+      client.resource('orgs', process.env.ZETKIN_ORG_ID, 'search', 'person').post({ q })
+    )
+    return data.data
+  } catch (e) {
+    console.error(e)
+    throw e
+  }
+}
     return data.data
   } catch (e) {
     console.error(e)
@@ -75,9 +83,9 @@ export const createZetkinMember = async (
   { customFields, ...fields }: Partial<ZetkinMemberPost>
 ): Promise<ZetkinMemberGet | null> => {
   const client = await getZetkinInstance()
-  const member: ZetkinMemberGet = (await client
-    .resource('orgs', process.env.ZETKIN_ORG_ID, 'people')
-    .post(fields))?.data?.data
+  const member: ZetkinMemberGet = (await aggressivelyRetry(async () =>
+    client.resource('orgs', process.env.ZETKIN_ORG_ID, 'people').post(fields))
+  )?.data?.data
   if (customFields && Object.keys(customFields).length > 0) {
     for (const field in customFields) {
       client
@@ -94,9 +102,9 @@ export const updateZetkinMember = async (
   { customFields, ...fields }: Partial<ZetkinMemberPost>
 ): Promise<ZetkinMemberGet | null> => {
   const client = await getZetkinInstance()
-  const member: ZetkinMemberGet = (await client
-    .resource('orgs', process.env.ZETKIN_ORG_ID, 'people', personId)
-    .patch(fields))?.data?.data
+  const member: ZetkinMemberGet = (await aggressivelyRetry(async () =>
+    client.resource('orgs', process.env.ZETKIN_ORG_ID, 'people', personId).patch(fields)
+  ))?.data?.data
   if (customFields && Object.keys(customFields).length > 0) {
     for (const field in customFields) {
       client
@@ -112,9 +120,9 @@ export const getZetkinCustomData = async (
   personId: ZetkinMemberPost['id']
 ) => {
   const client = await getZetkinInstance()
-  const { data } = client
-    .resource('orgs', process.env.ZETKIN_ORG_ID, 'people', personId, 'fields')
-    .get()
+  const { data } = await aggressivelyRetry(async () =>
+    client.resource('orgs', process.env.ZETKIN_ORG_ID, 'people', personId, 'fields').get()
+  )
   return data?.data || [] as ZetkinCustomFields
 }
 

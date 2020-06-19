@@ -3,10 +3,12 @@ import express from 'express'
 import * as auth from './express-zetkin-auth';
 import cookieParser from 'cookie-parser'
 import sslRedirect from 'heroku-ssl-redirect'
-import { zetkinAuthOpts, validate, zetkinLogin, zetkinLogout, zetkinTokens, zetkinRefresh, zetkinLoginUrl, authStorageInterceptor, zetkinLoginAndReturn, getValidTokens, zetkinUpgradeToken, zetkinUpgradeAndReturn, getZetkinInstance } from './auth';
+import { zetkinAuthOpts, validate, zetkinLogin, zetkinLogout, zetkinTokens, zetkinRefresh, zetkinLoginUrl, authStorageInterceptor, zetkinLoginAndReturn, getValidTokens, zetkinUpgradeToken, zetkinUpgradeAndReturn, getZetkinInstance, aggressivelyRetry } from './auth';
 import { handleGoCardlessWebhook, gocardlessQuery } from './gocardless';
 import * as bodyParser from 'body-parser';
 import { handleZammadWebhook } from './zammad';
+
+export const helloWorld = { hello: 'world' }
 
 export default () => {
   // @ts-ignore
@@ -30,14 +32,16 @@ export default () => {
   }
 
   app.get('/', (req, res) => {
-    res.json({ hello: 'world' })
+    res.json(helloWorld)
   })
 
   app.get('/zetkin', validate(), async (req, res) => {
     const query = async () => {
       // @ts-ignore
       const client = await getZetkinInstance()
-      const { data } = await client.resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'fields').get()
+      const { data } = await aggressivelyRetry(async () =>
+        client.resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'fields').get()
+      )
       return res.json(data)
     }
 
@@ -48,7 +52,7 @@ export default () => {
       if (e.httpStatus === 401) {
         try {
           console.log(e, 'Refresh')
-          await zetkinRefresh(req, res)
+          await zetkinRefresh()
           return await query()
         } catch (e) {
           console.log(e, 'Login')

@@ -5,6 +5,8 @@ import * as Z from 'zetkin'
 import ClientOAuth2 from 'client-oauth2'
 import * as url from 'url'
 import * as auth from './express-zetkin-auth';
+import { spoofLogin, spoofUpgrade } from './zetkin-spoof';
+import { wait } from './utils';
 
 /**
  * Zetkin auth
@@ -64,6 +66,66 @@ export const getZetkinInstance = async () => {
   return zetkin
 }
 
+/**
+ * Query a resource endpoint.
+ * If the query fails, try refreshing the token.
+ * If that fails, spoof a user login/upgrade request and try again.
+ * Otherwise fail.
+ * 
+ * @param method 
+ * @param args 
+ */
+export const aggressivelyRetry = async (query: Function) => {
+  try {
+    return query()
+  } catch (e) {
+    if (e.httpStatus === 401) {
+      try {
+        console.log(e, 'Refresh')
+        await zetkinRefresh()
+        return query()
+      } catch (e) {
+        console.log(e, 'Login')
+        await spoofLogin()
+        await wait(1000)
+        return query()
+      }
+    } else if (e.httpStatus === 403) {
+      await spoofUpgrade()
+      await wait(500)
+      return query()
+    } else {
+      console.log('Give up')
+    }
+  }
+}
+// export const aggressivelyRetry = async (query: Function) => {
+//   try {
+//     return query()
+//   } catch (e) {
+//     // Something went wrong
+//     try {
+//       // First try refreshing the token
+//       await zetkinRefresh()
+//       return query()
+//     } catch (e) {
+//       console.log("2. Refreshed query errored", e)
+//       // If the refresh didn't work, it probably had something to do with the token itself being stale
+//       // So try to login as the user!
+//       try {
+//         await spoofLogin()
+//         await wait(1500)
+//         await spoofUpgrade()
+//         await wait(500)
+//         return query()
+//       } catch (e) {
+//         console.log("3. Re-logged in query errored", e)
+//         throw new Error("Couldn't refresh token or acquire a new one automatically.")
+//       }
+//     }
+//   }
+// }
+
 interface Token extends Timestamps {
   access_token: string
   expires_in: string
@@ -81,12 +143,13 @@ export const deleteAllTokens = async () => {
 }
 
 export const saveToken = async (tokenData, origin) => {
-  return await db.table('tokens').insert({
+  await db.table('tokens').insert({
     ...tokenData,
     // Discount this token 10 seconds early in case of any network latency
     expiry_time: new Date(Date.now() + ((tokenData.expires_in - 10) * 1000)),
     origin,
-  }).returning<Token[]>('*')
+  })
+  return await db.table('tokens').select('*').where(tokenData)
 }
 
 export const getTokens = async () => {
@@ -114,12 +177,18 @@ export const refreshToken = async () => {
   }
 }
 
-export const zetkinLoginUrl = (req: Express.Request, redirectUri: string = req.url) => {
-  const pathname = url.parse(redirectUri).pathname
+export const zetkinLoginUrl = async (redirectUri: string, hostname?: string) => {
+  let host, pathname
+  try {
+    const redirUrl = url.parse(redirectUri)
+    host = redirUrl.host
+    pathname = redirUrl.pathname
+  } catch (e) {}
+  const client = await getZetkinInstance()
   // @ts-ignore
-  return req.z.getLoginUrl(url.format({
+  return client.getLoginUrl(url.format({
     protocol: process.env.ZETKIN_CLIENT_PROTOCOL ? process.env.ZETKIN_CLIENT_PROTOCOL : opts.ssl? 'https' : 'http',
-    host: url.parse(redirectUri).host || req.hostname,
+    host: host || hostname,
     pathname: pathname === '/zetkin/login' ? '/' : pathname,
   }))
 }
@@ -169,7 +238,7 @@ export const validate = (redirect = true) => async (req: Express.Request, res: E
         await deleteAllTokens()
         // And add a new one
         // @ts-ignore
-        res.redirect(zetkinLoginUrl(req))
+        res.redirect(await zetkinLoginUrl(req.url, req.hostname))
       } else {
         return next()
       }
@@ -193,11 +262,12 @@ export const authStorageInterceptor = async (req: Express.Request, res: Express.
   next();
 }
 
-export const zetkinRefresh = async (req: Express.Request, res: Express.Response) => {
+export async function zetkinRefresh () {
   const refreshedToken = await refreshToken()
+  const client = await getZetkinInstance()
   if (refreshedToken.length) {
     // @ts-ignore
-    req.z.setTokenData(refreshedToken[0])
+    client.setTokenData(refreshedToken[0])
   } else {
     throw new Error("Couldn't refresh token")
   }
@@ -236,7 +306,7 @@ export const zetkinLogin = async (req, res) => {
   await deleteAllTokens()
   // And add a new one
   // @ts-ignore
-  res.redirect(zetkinLoginUrl(req, req.query.redirect))
+  res.redirect(await zetkinLoginUrl(req.query.redirect, req.hostname))
 }
 
 export const zetkinLogout = async (req, res) => {
@@ -247,6 +317,7 @@ export const zetkinLogout = async (req, res) => {
 
 export const getZetkinUpgradeUrl = async (redirectUri: string) => {
   const accessToken = (await getValidToken())?.access_token
+  if (!accessToken) throw new Error("Couldn't find an access token. Login required before you can upgrade.")
   let loginUrl = 'http://login.' + process.env.ZETKIN_DOMAIN + '/upgrade'
     // @ts-ignore
     + '?access_token=' + encodeURIComponent(accessToken)

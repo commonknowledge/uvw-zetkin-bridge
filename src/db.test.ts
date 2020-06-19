@@ -38,7 +38,7 @@ const webhookRequest = {
   }
 }
 
-describe('test database', () => {
+describe('Test suite database', () => {
   before(async () => {
     await db.migrate.latest({
       directory: path.join(__dirname, '../migrations'),
