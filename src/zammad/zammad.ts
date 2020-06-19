@@ -87,7 +87,7 @@ export const handleZammadWebhook = async (
   console.log("Received Zammad webhook")
 
   // Attach Zetkin user if necessary
-  console.log(req.body)
+  // console.log(req.body)
   const ticketData = await parseZammadWebhookBody(req.body)
   // console.log({ ticketData })
   const customer = ticketData?.customer
