@@ -1,8 +1,7 @@
 import expect from 'expect'
 import supertest from 'supertest'
-import createServer from './server'
 import { parseZammadWebhookBody } from './zammad';
-const app = createServer()
+import { DevServer } from './dev.test';
 
 // This data might change as the data relies on Zammad itself.
 // In future, mock Zammad API calls.
@@ -144,11 +143,22 @@ const exampleWebhooks = {
   }
 }
 
+const devServer = new DevServer()
+
 describe('Zammad webhook receiver', () => {
+  beforeEach(async function() { 
+    this.timeout(10000)
+    await devServer.setup()
+  })
+
+  afterEach(async function() {
+    await devServer.teardown()
+  })
+  
   it('Returns a 204 response if the request is valid', async () => {
     const fixture = exampleWebhooks["Create new ticket"]
     try {
-      await supertest(app)
+      await supertest(devServer.config.app)
         .post('/webhooks/zammad')
         .send(fixture.body)
         .set('user-agent', fixture.headers['user-agent'])
@@ -161,7 +171,7 @@ describe('Zammad webhook receiver', () => {
   it('Returns a 400 response if the request is invalid', async () => {
     const fixture = exampleWebhooks["Create new ticket"]
     try {
-      await supertest(app)
+      await supertest(devServer.config.app)
         .post('/webhooks/zammad')
         .send(fixture.body)
         .set('user-agent', fixture.headers['user-agent'] + 'blah')

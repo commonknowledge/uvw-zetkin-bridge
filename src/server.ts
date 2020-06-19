@@ -38,8 +38,7 @@ export default () => {
   app.get('/zetkin', validate(), async (req, res) => {
     const query = async () => {
       // @ts-ignore
-      const client = await getZetkinInstance()
-      const { data } = await aggressivelyRetry(async () =>
+      const { data } = await aggressivelyRetry(async (client) =>
         client.resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'fields').get()
       )
       return res.json(data)

@@ -75,29 +75,58 @@ export const getZetkinInstance = async () => {
  * @param method 
  * @param args 
  */
-export const aggressivelyRetry = async (query: Function) => {
-  try {
-    return query()
-  } catch (e) {
-    if (e.httpStatus === 401) {
-      try {
-        console.log(e, 'Refresh')
-        await zetkinRefresh()
-        return query()
-      } catch (e) {
-        console.log(e, 'Login')
+export const aggressivelyRetry = async (query: (client: { resource: any }) => any, maxRetries = 5) => {
+  let mode: 'fail' | 'login' | 'refresh' | 'upgrade' = null
+  let retryCount = 0
+  async function run() {
+    retryCount++
+    if (mode === 'fail') return
+    if (retryCount > maxRetries) return
+    try {
+      const client = await getZetkinInstance()
+      const data = await query(client)
+      console.log(await getValidTokens())
+      return data
+    } catch (e) {
+      // console.log("QUERY FAILED")
+      if (e.toString().includes('Unable to sign without access token')) {
+        mode = 'login'
+        // console.log('Login', await getValidTokens())
         await spoofLogin()
         await wait(1000)
-        return query()
+        const data = await run()
+        return data
+      } else if (e.httpStatus === 401) {
+        try {
+          mode = 'refresh'
+          // console.log('Refresh', await getValidTokens())
+          await zetkinRefresh()
+          const data = await run()
+          return data
+        } catch (e) {
+          mode = 'login'
+          // console.log('Login', await getValidTokens())
+          await spoofLogin()
+          await wait(1000)
+          const data = await run()
+          return data
+        }
+      } else if (e.httpStatus === 403) {
+        mode = 'upgrade'
+        // console.log("Upgrade", await getValidTokens())
+        await spoofUpgrade()
+        await wait(500)
+        const data = await run()
+        return data
+      } else {
+        mode = 'fail'
+        // console.log('Give up', await getValidTokens())
+        return
       }
-    } else if (e.httpStatus === 403) {
-      await spoofUpgrade()
-      await wait(500)
-      return query()
-    } else {
-      console.log('Give up')
     }
   }
+
+  return run()
 }
 // export const aggressivelyRetry = async (query: Function) => {
 //   try {

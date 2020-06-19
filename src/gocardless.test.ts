@@ -1,9 +1,8 @@
 import expect from 'expect'
 import supertest from 'supertest'
-import createServer from './server'
-const app = createServer()
 import db from "./db"
 import GoCardless from 'gocardless-nodejs';
+import { DevServer } from './dev.test';
 
 const webhookRequest = {
   body: {
@@ -59,13 +58,20 @@ const webhookRequest = {
   }
 }
 
-describe('gocardless webhook receiver', () => {
-  beforeEach(async () => {
-    await db.table('events').delete('*')
-  });
+const devServer = new DevServer()
+
+describe('Gocardless webhook receiver', () => {
+  beforeEach(async function() { 
+    this.timeout(10000)
+    await devServer.setupDb()
+  })
+
+  afterEach(async function() {
+    await devServer.teardownDb()
+  })
 
   it('Returns a 204 response if the request is valid', async () => {
-    await supertest(app)
+    await supertest(devServer.config.app)
       .post('/webhooks/gocardless')
       .send(webhookRequest.body)
       .set('content-type', webhookRequest.headers['content-type'])
@@ -83,7 +89,7 @@ describe('gocardless webhook receiver', () => {
   // })
 
   it('It stores the events in the database', async () => {
-    await supertest(app)
+    await supertest(devServer.config.app)
       .post('/webhooks/gocardless')
       .send(webhookRequest.body)
       .set('content-type', webhookRequest.headers['content-type'])

@@ -111,67 +111,35 @@ const expectedCustomFields = {
 import expect from 'expect'
 import { getZetkinInstance, getValidToken, getValidTokens, aggressivelyRetry } from './auth';
 import { spoofLogin, spoofUpgrade } from './zetkin-spoof';
-import createServer from './server';
-import ngrok from 'ngrok'
-import * as url from 'url';
-import fetch from 'node-fetch';
-import { helloWorld } from './server';
 import { wait } from './utils';
+import { DevServer } from './dev.test';
+const devServer = new DevServer()
 
 describe('Zetkin authenticator', async function () {
-  let server
-  const port = 4041
-  let ngrokURL
-  const app = createServer()
-  const ngrokConfig = {
-    protocol: process.env.ZETKIN_CLIENT_PROTOCOL, // http|tcp|tls, defaults to http
-    addr: port,
-    subdomain: process.env.ZETKIN_NGROK_DOMAIN.split('.')[0], // reserved tunnel name https://alex.ngrok.io
-    authtoken: process.env.NGROK_TOKEN, // your authtoken from ngrok.com
-    region: process.env.ZETKIN_NGROK_REGION as any || 'eu', // one of ngrok regions (us, eu, au, ap), defaults to us
-  }
-
-  before(async function() { 
+  beforeEach(async function() { 
     this.timeout(10000)
-    server = app.listen(port)
-    await wait(1500)
-    ngrokURL = await ngrok.connect(ngrokConfig);
-  })
-  
-  it('Should have a running dev server', async function () {
-    const res = await fetch(url.format({ protocol: 'http', hostname: 'localhost', port }))
-    const body = await res.json()
-    expect(body).toEqual(helloWorld)
+    await devServer.setup()
   })
 
-  it('Should automatically login on request', async function () {
+  afterEach(async function() {
+    await devServer.teardown()
+  })
+
+  it('Should automatically login and upgrade on request', async function () {
     this.timeout(25000)
     this.retries(3)
     await spoofLogin()
     await wait(2000)
     const tokens = await getValidTokens()
-    console.log(tokens)
     expect(tokens.length).toBeGreaterThan(0)
-  })
-
-  it('Should automatically upgrade on request', async function () {
-    this.timeout(25000)
-    this.retries(3)
     await spoofUpgrade()
   })
 
   it('Should get the required custom fields from Zetkin', async function () {
     this.timeout(60000)
-    const client = await getZetkinInstance()
-    const {data} = await aggressivelyRetry(async () =>
+    const {data} = await aggressivelyRetry(async (client) =>
       client.resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'fields').get()
     )
     expect(data).toEqual(expectedCustomFields)
-  })
-
-  after(async function() {
-    // @ts-ignore
-    await server.close()
-    await ngrok.disconnect();
   })
 })
