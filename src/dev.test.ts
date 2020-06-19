@@ -1,6 +1,6 @@
 import expect from 'expect'
 import db from "./db"
-import { mapEventToRow } from './gocardless';
+import { mapEventToRow } from './gocardless/gocardless';
 import GoCardless from 'gocardless-nodejs';
 import * as url from 'url';
 import fetch from 'node-fetch';

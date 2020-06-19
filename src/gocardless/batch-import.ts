@@ -1,7 +1,7 @@
 import { gocardless } from './gocardless';
 import * as GoCardless from 'gocardless-nodejs';
-import { ZetkinMemberGet } from './zetkin';
-import { getOrCreateZetkinPersonByGoCardlessCustomer } from './gocardless-zetkin-sync';
+import { ZetkinMemberGet } from '../zetkin/zetkin';
+import { getOrCreateZetkinPersonByGoCardlessCustomer } from './zetkin-sync';
 // For each GoCardless customer, match to Zetkin member and update custom fields.
 
 export const syncGoCardlessCustomersToZetkin = async (limit?: number) => {

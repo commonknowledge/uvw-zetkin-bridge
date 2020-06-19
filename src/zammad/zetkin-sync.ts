@@ -1,6 +1,5 @@
 import { ZammadUser } from './zammad';
-import { upsertZetkinPerson, ZetkinMemberGet, findZetkinMemberByQuery, updateZetkinMember, findZetkinMemberByFilters } from './zetkin';
-import { update } from 'lodash';
+import { upsertZetkinPerson, ZetkinMemberGet, findZetkinMemberByQuery, updateZetkinMember, findZetkinMemberByFilters } from '../zetkin/zetkin';
 import Phone from 'awesome-phonenumber';
 
 export const getZetkinPersonByZammadCustomer = async (customer: ZammadUser) => {

@@ -2,12 +2,12 @@ import * as process from "process"
 // @ts-ignore
 import * as webhooks from "gocardless-nodejs/webhooks"
 import * as Express from 'express'
-import db from "./db";
+import db from "../db";
 import * as constants from 'gocardless-nodejs/constants'
 import GoCardless from 'gocardless-nodejs'
 import { GoCardlessClient } from 'gocardless-nodejs/client'
-import { findZetkinMemberByQuery, ZetkinMemberGet } from './zetkin';
-import { processEvent } from './gocardless-zetkin-sync';
+import { findZetkinMemberByQuery, ZetkinMemberGet } from '../zetkin/zetkin';
+import { processEvent } from './zetkin-sync';
 // @ts-ignore
 export const gocardless: GoCardlessClient = GoCardless(process.env.GOCARDLESS_ACCESS_TOKEN, constants.Environments.Live);
 

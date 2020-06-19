@@ -2,9 +2,8 @@ import * as Express from 'express'
 import * as fetch from 'node-fetch'
 import { merge } from 'lodash'
 import * as path from 'path';
-import { getZetkinPersonByZammadCustomer, upsertZetkinPersonByZammadUser } from './zammad-zetkin-sync';
-// import { upsertZetkinPersonByZammadUser, getZetkinPersonByZammadCustomer } from './zammad-zetkin-sync';
-import { getZetkinCustomData } from './zetkin';
+import { getZetkinPersonByZammadCustomer, upsertZetkinPersonByZammadUser } from '../zammad/zetkin-sync';
+import { getZetkinCustomData } from '../zetkin/zetkin';
 
 type URLType = fetch.RequestInfo | (string|number)[]
 

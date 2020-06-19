@@ -1,7 +1,7 @@
 import expect from 'expect'
 import supertest from 'supertest'
 import { parseZammadWebhookBody } from './zammad';
-import { DevServer } from './dev';
+import { DevServer } from '../dev';
 
 // This data might change as the data relies on Zammad itself.
 // In future, mock Zammad API calls.

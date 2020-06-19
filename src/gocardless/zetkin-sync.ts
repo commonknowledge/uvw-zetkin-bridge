@@ -1,7 +1,7 @@
 import GoCardless from 'gocardless-nodejs';
 import { getLinked } from './gocardless';
-import { updateZetkinMember, ZetkinMemberGet, addZetkinNoteToMember, upsertZetkinPerson, findZetkinMemberByQuery, findZetkinMemberByFilters } from './zetkin';
-import db from './db';
+import { updateZetkinMember, ZetkinMemberGet, addZetkinNoteToMember, upsertZetkinPerson, findZetkinMemberByQuery, findZetkinMemberByFilters } from '../zetkin/zetkin';
+import db from '../db';
 import Phone from 'awesome-phonenumber'
 
 export const getInterestingEvents = (events: GoCardless.Event[]) => {

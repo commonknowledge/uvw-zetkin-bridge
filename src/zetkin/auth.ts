@@ -1,12 +1,12 @@
-import db from './db'
+import db from '../db'
 import * as Express from 'express'
-import { Timestamps } from './db';
+import { Timestamps } from '../db';
 import * as Z from 'zetkin'
 import ClientOAuth2 from 'client-oauth2'
 import * as url from 'url'
 import * as auth from './express-zetkin-auth';
-import { spoofLogin, spoofUpgrade } from './zetkin-spoof';
-import { wait } from './utils';
+import { spoofLogin, spoofUpgrade } from './spoof';
+import { wait } from '../utils';
 import { uniqueId } from 'lodash';
 
 /**

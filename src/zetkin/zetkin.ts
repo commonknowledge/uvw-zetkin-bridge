@@ -1,4 +1,4 @@
-import { aggressivelyRetry, getValidToken, getValidTokens } from './auth';
+import { aggressivelyRetry, getValidToken } from './auth';
 // https://developer.zetkin.org/reference/
 
 export type ZetkinMemberMetadata = {
@@ -39,7 +39,7 @@ export const upsertZetkinPerson = async (member: ZetkinMemberPost): Promise<Zetk
     const updatedMember = await updateZetkinMember(foundMember.id, member)
     return updatedMember
   } catch (e) {
-    console.error("Couldn't find member, so creating", e)
+    // console.error("Couldn't find member, so creating")
     try {
       return createZetkinMember(member)
     } catch (e) {

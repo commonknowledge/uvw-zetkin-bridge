@@ -109,11 +109,11 @@ const expectedCustomFields = {
 }
 
 import expect from 'expect'
-import { getZetkinInstance, getValidToken, getValidTokens, aggressivelyRetry } from './auth';
-import { spoofLogin, spoofUpgrade } from './zetkin-spoof';
-import { wait } from './utils';
-import { DevServer } from './dev';
-import { createZetkinMember, ZetkinMemberGet, deleteZetkinMember, updateZetkinMemberCustomFields, findZetkinMemberByFilters, findZetkinMemberByQuery, getZetkinMemberById } from './zetkin';
+import { getValidTokens, aggressivelyRetry } from './auth';
+import { spoofLogin, spoofUpgrade } from './spoof';
+import { wait } from '../utils';
+import { DevServer } from '../dev';
+import { createZetkinMember, deleteZetkinMember, updateZetkinMemberCustomFields, findZetkinMemberByFilters, findZetkinMemberByQuery, getZetkinMemberById } from './zetkin';
 const devServer = new DevServer()
 
 describe('Zetkin authenticator', async function () {

@@ -1,7 +1,7 @@
-import { zetkinLoginUrl, zetkinUpgradeToken, getZetkinUpgradeUrl, getZetkinInstance, getValidTokens } from './auth';
+import { zetkinLoginUrl, getZetkinUpgradeUrl, getZetkinInstance, getValidTokens } from './auth';
 import puppeteer from 'puppeteer'
 import * as url from 'url';
-import { wait } from './utils';
+import { wait } from '../utils';
 
 export const spoofLogin = async () => {
   console.log("Before login", await getValidTokens())

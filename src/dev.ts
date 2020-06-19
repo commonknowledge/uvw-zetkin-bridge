@@ -1,7 +1,7 @@
 import path from 'path'
 import createServer from './server';
 import ngrok from 'ngrok'
-import { getZetkinInstance, getValidToken, zetkin } from './auth';
+import { getZetkinInstance, getValidToken } from './zetkin/auth';
 import db from "./db"
 
 const port = 4041

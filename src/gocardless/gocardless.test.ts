@@ -1,8 +1,8 @@
 import expect from 'expect'
 import supertest from 'supertest'
-import db from "./db"
+import db from "../db"
 import GoCardless from 'gocardless-nodejs';
-import { DevServer } from './dev';
+import { DevServer } from '../dev';
 
 const webhookRequest = {
   body: {

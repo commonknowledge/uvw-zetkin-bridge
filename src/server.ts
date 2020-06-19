@@ -1,12 +1,12 @@
 import '../env'
 import express from 'express'
-import * as auth from './express-zetkin-auth';
+import * as auth from './zetkin/express-zetkin-auth';
 import cookieParser from 'cookie-parser'
 import sslRedirect from 'heroku-ssl-redirect'
-import { zetkinAuthOpts, validate, zetkinLogin, zetkinLogout, zetkinTokens, zetkinRefresh, zetkinLoginUrl, authStorageInterceptor, zetkinLoginAndReturn, getValidTokens, zetkinUpgradeToken, zetkinUpgradeAndReturn, getZetkinInstance, aggressivelyRetry } from './auth';
-import { handleGoCardlessWebhook, gocardlessQuery } from './gocardless';
+import { zetkinAuthOpts, validate, zetkinLogin, zetkinLogout, zetkinTokens, zetkinRefresh, authStorageInterceptor, zetkinLoginAndReturn, zetkinUpgradeToken, zetkinUpgradeAndReturn, aggressivelyRetry } from './zetkin/auth';
+import { handleGoCardlessWebhook, gocardlessQuery } from './gocardless/gocardless';
 import * as bodyParser from 'body-parser';
-import { handleZammadWebhook } from './zammad';
+import { handleZammadWebhook } from './zammad/zammad';
 
 export const helloWorld = { hello: 'world' }
 
@@ -35,36 +35,11 @@ export default () => {
     res.json(helloWorld)
   })
 
-  app.get('/zetkin', validate(), async (req, res) => {
-    const query = async () => {
-      // @ts-ignore
-      const { data } = await aggressivelyRetry(async (client) =>
-        client.resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'fields').get()
-      )
-      return res.json(data)
-    }
-
-    try {
-      return await query()
-    } catch (e) {
-      console.error("Zetkin request error", e)
-      if (e.httpStatus === 401) {
-        try {
-          console.log(e, 'Refresh')
-          await zetkinRefresh()
-          return await query()
-        } catch (e) {
-          console.log(e, 'Login')
-          return await zetkinLoginAndReturn(req, res)
-        }
-      } else if (e.httpStatus === 403) {
-        console.log('Upgrade')
-        return await zetkinUpgradeAndReturn(req, res)
-      } else {
-        console.log('Give up')
-        return res.redirect('/')
-      }
-    }
+  app.get('/zetkin', async (req, res) => {
+    const { data } = await aggressivelyRetry(async (client) =>
+      client.resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'fields').get()
+    )
+    return res.json(data)
   })
 
   app.all('/webhooks/gocardless', handleGoCardlessWebhook)

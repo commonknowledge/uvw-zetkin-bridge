@@ -1,6 +1,6 @@
 import expect from 'expect'
-import { syncGoCardlessCustomersToZetkin } from './batch';
-import { DevServer } from './dev';
+import { syncGoCardlessCustomersToZetkin } from './batch-import';
+import { DevServer } from '../dev';
 
 const devServer = new DevServer()
 
@@ -15,9 +15,10 @@ describe('GoCardless batch process', () => {
   })
 
   it('Matches all gocardless customers to zetkin people', async function () {
+    const batchSize = 20
     this.timeout(60000)
-    // const out = await syncGoCardlessCustomersToZetkin(2)
-    // console.log(out)
-    // expect(out).toHaveLength(2)
+    const out = await syncGoCardlessCustomersToZetkin(batchSize)
+    console.log(out)
+    expect(out).toHaveLength(batchSize)
   })
 })
