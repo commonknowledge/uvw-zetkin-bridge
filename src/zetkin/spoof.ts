@@ -4,9 +4,9 @@ import * as url from 'url';
 import { wait } from '../utils';
 
 export const spoofLogin = async () => {
-  console.log("Before login", await getValidTokens())
+  console.trace("Before login", await getValidTokens())
   // Spin up a useragent spoofer
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
   const page = await browser.newPage();
   // Navigate to the login URL
   await page.goto(await zetkinLoginUrl('/', process.env.ZETKIN_NGROK_DOMAIN));
@@ -21,13 +21,14 @@ export const spoofLogin = async () => {
   await page.waitForNavigation();
   await browser.close();
   await wait(1000)
-  console.log("After login", await getValidTokens())
-  const client = getZetkinInstance()
+  console.trace("After login", await getValidTokens())
+  return getZetkinInstance()
 }
 
 export const spoofUpgrade = async () => {
+  console.trace("Attempting upgrade")
   // Spin up a useragent spoofer
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
   const page = await browser.newPage();
   // Navigate to the login URL
   const upgradeURL = await getZetkinUpgradeUrl(url.format({ hostname: process.env.ZETKIN_NGROK_DOMAIN, pathname: '/' }))

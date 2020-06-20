@@ -2,7 +2,6 @@ import * as process from "process"
 // @ts-ignore
 import * as webhooks from "gocardless-nodejs/webhooks"
 import * as Express from 'express'
-import db from "../db";
 import * as constants from 'gocardless-nodejs/constants'
 import GoCardless from 'gocardless-nodejs'
 import { GoCardlessClient } from 'gocardless-nodejs/client'
@@ -36,19 +35,6 @@ export const handleGoCardlessWebhook = async (req: Express.Request<null, null, {
     // TODO: Turn this back on
     // const events = await parseEvents(req.body, req.headers['webhook-signature'] as string)
     const events = req.body.events
-    // TODO: https://github.com/knex/knex/issues/701#issuecomment-594512849 for deduping
-    try {
-      try {
-        await db.table('events').insert(events.map(mapEventToRow))
-      } catch (e) {
-        events.forEach(async e => {
-          await db.table('events').insert(mapEventToRow(e))
-        })
-      }
-    } catch (e) {
-      console.error("Failed to store events in db", e)
-    }
-
     await Promise.all(events.map(processEvent))
   } catch (error) {
     console.error(error)
@@ -143,3 +129,54 @@ type AllAvailableLinks =
   & GoCardless.SubscriptionLinks
 
 type linkResourceKey = keyof AllAvailableLinks
+
+export const getRelevantGoCardlessData = async (
+  customerId: string,
+  subscription?: GoCardless.Subscription,
+  payments?: GoCardless.Payment[]
+) => {
+  // Current status
+  if (!subscription) {
+    const subscriptions = await gocardless.subscriptions.list({ customer: customerId });
+    subscription = subscriptions.subscriptions.sort(
+      (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
+    )[0]
+  }
+  const gocardless_subscription_name = subscription.name
+  const gocardless_subscription_id = subscription.id
+  const gocardless_status = subscription.status
+
+  if (!payments) {
+    const paymentsResponse = await gocardless.payments.list({ customer: customerId })
+    payments = paymentsResponse.payments
+  }
+  payments = payments
+    .filter(payment => !!payment.links.payout)
+    .sort(
+      (a, b) => new Date(a.charge_date).getTime() - new Date(b.charge_date).getTime()
+    )
+
+  // Payment history
+  let first_payment_date: string
+  let last_payment_date: string
+  const first_payment = payments.length === 0 ? null
+    : payments[0]
+  if (first_payment) {
+    first_payment_date = new Date((await gocardless.payouts.find(first_payment.links.payout)).created_at).toISOString()
+  }
+  const last_payment = payments.length === 0 ? null
+    : payments[payments.length - 1]
+  if (last_payment) {
+    last_payment_date = new Date((await gocardless.payouts.find(last_payment.links.payout)).created_at).toISOString()
+  }
+  const number_of_payments = payments.length
+
+  return {
+    gocardless_subscription_name,
+    gocardless_subscription_id,
+    gocardless_status,
+    last_payment_date,
+    number_of_payments,
+    first_payment_date,
+  }
+}

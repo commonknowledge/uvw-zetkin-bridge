@@ -31,7 +31,7 @@ export const getRelevantZetkinData = async (ticketData: {
       number: String(zetkinPerson.id),
       gocardless_url: getCustomData('gocardless_url'),
       gocardless_status: getCustomData('gocardless_status'),
-      gocardless_subscription: getCustomData('gocardless_subscription'),
+      gocardless_subscription: getCustomData('gocardless_subscription_name'),
       first_payment_date: getCustomData('first_payment_date'),
       last_payment_date: getCustomData('last_payment_date')
     } as Partial<ZammadUser>

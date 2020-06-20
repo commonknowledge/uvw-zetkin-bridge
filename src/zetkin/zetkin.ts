@@ -128,7 +128,7 @@ export const updateZetkinMember = async (
 }
 
 export const updateZetkinMemberCustomFields = async (personId: number, customFields: object) => {
-  const responses = []
+  const responses: { [key: string]: string | false } = {}
   for (const field in customFields) {
     const value = (customFields[field] !== null && customFields[field] !== undefined)
       ? customFields[field].toString()
@@ -140,9 +140,9 @@ export const updateZetkinMemberCustomFields = async (personId: number, customFie
           .resource('orgs', process.env.ZETKIN_ORG_ID, 'people', personId, 'fields', field)
           .put(value)
       )
-      responses.push(response?.data?.data)
+      responses[field] = response?.data?.data as string
     } catch (e) {
-      responses.push(false)
+      responses[field] = false
     }
   }
   return responses

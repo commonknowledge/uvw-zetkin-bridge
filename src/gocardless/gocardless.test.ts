@@ -3,6 +3,7 @@ import supertest from 'supertest'
 import db from "../db"
 import GoCardless from 'gocardless-nodejs';
 import { DevServer } from '../dev';
+import { getRelevantGoCardlessData, gocardless } from './gocardless';
 
 const webhookRequest = {
   body: {
@@ -88,14 +89,25 @@ describe('Gocardless webhook receiver', () => {
   //     .expect(400)
   // })
 
-  it('It stores the events in the database', async () => {
-    await supertest(devServer.config.app)
-      .post('/webhooks/gocardless')
-      .send(webhookRequest.body)
-      .set('content-type', webhookRequest.headers['content-type'])
-      .set('webhook-signature', webhookRequest.headers['webhook-signature'])
+  // it('It stores the events in the database', async () => {
+  //   await supertest(devServer.config.app)
+  //     .post('/webhooks/gocardless')
+  //     .send(webhookRequest.body)
+  //     .set('content-type', webhookRequest.headers['content-type'])
+  //     .set('webhook-signature', webhookRequest.headers['webhook-signature'])
 
-    const events = await db.select<GoCardless.Event[]>('*').from('events').where('id', 'in', webhookRequest.body.events.map(e => e.id))
-    expect(events.length).toEqual(webhookRequest.body.events.length)
+  //   const events = await db.select<GoCardless.Event[]>('*').from('events').where('id', 'in', webhookRequest.body.events.map(e => e.id))
+  //   expect(events.length).toEqual(webhookRequest.body.events.length)
+  // })
+
+  it('Gets relevant gocardless data for a known customer', async function () {
+    const data = await getRelevantGoCardlessData("CU000STHXDH55S")
+    expect(data).toEqual({
+      gocardless_subscription_name: "UVW membership (gross monthly salary above £1,101)",
+      gocardless_subscription_id: "SB000940CGEJVF",
+      gocardless_status: "active",
+      last_payment_date: new Date("2020-06-02T11:29:58.987Z"),
+      first_payment_date: new Date("2020-05-01T10:40:29.090Z"),
+    })
   })
 })

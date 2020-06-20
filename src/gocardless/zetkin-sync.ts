@@ -1,6 +1,6 @@
 import GoCardless from 'gocardless-nodejs';
-import { getLinked } from './gocardless';
-import { updateZetkinMember, ZetkinMemberGet, addZetkinNoteToMember, upsertZetkinPerson, findZetkinMemberByQuery, findZetkinMemberByFilters } from '../zetkin/zetkin';
+import { getLinked, getRelevantGoCardlessData } from './gocardless';
+import { updateZetkinMember, ZetkinMemberGet, addZetkinNoteToMember, upsertZetkinPerson, findZetkinMemberByQuery, findZetkinMemberByFilters, updateZetkinMemberCustomFields } from '../zetkin/zetkin';
 import db from '../db';
 import Phone from 'awesome-phonenumber'
 
@@ -95,19 +95,11 @@ export const processEvent = async (event: GoCardless.Event) => {
       const payment: GoCardless.Payment = await getLinked(event, 'payment')
       const customer: GoCardless.Customer = await getLinked(payment, 'mandate', 'customer')
 
-      let zetkinPerson = await getOrCreateZetkinPersonByGoCardlessCustomer(customer)
+      const zetkinPerson = await getOrCreateZetkinPersonByGoCardlessCustomer(customer)
+      const message = `${event.details.description}. Payment details: ${parseInt(payment.amount) / 100} ${payment.currency} ${payment.description}}`
 
-      await db.table('events')
-        .where('id', '=', event.id)
-        .update({ zetkinPersonId: zetkinPerson.id })
-
-      addZetkinNoteToMember(zetkinPerson.id, {
-        source: 'GoCardless Webhook',
-        data: event,
-        id: event.id,
-        description: `${event.details.description}. Payment details: ${parseInt(payment.amount) / 100} ${payment.currency} ${payment.description}}`,
-        date: event.created_at
-      })
+      await addNoteToZetkinPerson(zetkinPerson.id, message)
+      await updateZetkinMemberCustomFields(zetkinPerson.id, await getRelevantGoCardlessData(customer.id))
     } else if (
       event.resource_type === 'subscriptions' &&
       ["finished", "cancelled", "paused", "resumed", "amended", "customer_approval_granted", "customer_approval_denied", "created"].includes(event.action)
@@ -115,21 +107,23 @@ export const processEvent = async (event: GoCardless.Event) => {
       const subscription: GoCardless.Subscription = await getLinked(event, 'subscription')
       const customer: GoCardless.Customer = await getLinked(subscription, 'mandate', 'customer')
 
-      let zetkinPerson = await getOrCreateZetkinPersonByGoCardlessCustomer(customer)
+      const zetkinPerson = await getOrCreateZetkinPersonByGoCardlessCustomer(customer)
+      const message = `${event.details.description}. Subscription name: ${subscription.name}`
 
-      await db.table('events')
-        .where('id', '=', event.id)
-        .update({ zetkinPersonId: zetkinPerson.id })
-
-      addZetkinNoteToMember(zetkinPerson.id, ({
-        source: 'GoCardless Webhook',
-        data: event,
-        id: event.id,
-        description: `${event.details.description}. Subscription name: ${subscription.name}`,
-        date: event.created_at
-      }))
+      await addNoteToZetkinPerson(zetkinPerson.id, message)
+      await updateZetkinMemberCustomFields(zetkinPerson.id, await getRelevantGoCardlessData(customer.id))
     }
   } catch (e) {
     console.error(e)
+  }
+
+  async function addNoteToZetkinPerson (zetkinPersonId: any, description: string) {
+    return addZetkinNoteToMember(zetkinPersonId, ({
+      source: 'GoCardless Webhook',
+      data: event,
+      id: event.id,
+      description,
+      date: event.created_at
+    }))
   }
 }

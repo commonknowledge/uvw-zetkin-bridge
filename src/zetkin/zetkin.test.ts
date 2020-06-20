@@ -1,6 +1,27 @@
 const expectedCustomFields = {
   "data": [
       {
+          "slug": "number_of_payments",
+          "title": "Number of Payments",
+          "id": 18,
+          "type": "text",
+          "description": ""
+      },
+      {
+          "slug": "gocardless_subscription_id",
+          "title": "GoCardless Subscription ID",
+          "id": 17,
+          "type": "text",
+          "description": ""
+      },
+      {
+          "slug": "gocardless_subscription_name",
+          "title": "GoCardless Subscription",
+          "id": 16,
+          "type": "text",
+          "description": ""
+      },
+      {
           "type": "text",
           "description": "",
           "title": "Zammad URL",
@@ -64,11 +85,11 @@ const expectedCustomFields = {
           "id": 7
       },
       {
-          "type": "text",
-          "description": "",
-          "title": "GoCardless subscription",
           "slug": "gocardless_subscription",
-          "id": 6
+          "title": "GoCardless subscription",
+          "id": 6,
+          "type": "text",
+          "description": ""
       },
       {
           "type": "url",
@@ -141,7 +162,7 @@ describe('Zetkin authenticator', async function () {
     const {data} = await aggressivelyRetry(async (client) =>
       client.resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'fields').get()
     )
-    expect(data).toEqual(expectedCustomFields)
+    expect(data).toMatchObject(expectedCustomFields)
   })
 })
 
@@ -157,10 +178,8 @@ describe('Zetkin CRUD operations', function () {
       gocardless_id: 1,
       gocardless_url: "https://commonknowledge.coop"
     },
-    deleteCustomFields: undefined
+    deleteCustomFields: {}
   }
-
-  fixtures.deleteCustomFields = {}
   Object.keys(fixtures.customFields).forEach(key => fixtures.deleteCustomFields[key] = null)
 
   let memberId: number
@@ -218,14 +237,14 @@ describe('Zetkin CRUD operations', function () {
     expect(members[0]?.first_name).toEqual(fixtures.member.first_name)
   })
 
-  it ('Adds and removes custom field values to a member', async function () {
+  it ('Adds custom field values to a member', async function () {
     this.timeout(60000)
     if (!memberId) throw new Error('Badly setup test')
     const fields = await updateZetkinMemberCustomFields(memberId, fixtures.customFields)
-    expect(fields).toEqual(Object.values(fixtures.customFields).map(String))
+    expect(fields).toEqual(withStringifiedObjectValues(fixtures.customFields))
   })
 
-  it ('Remove that custom field value from a member', async function () {
+  it ('Remove custom fields value from a member', async function () {
     this.timeout(60000)
     if (!memberId) throw new Error('Badly setup test')
     const fields = await updateZetkinMemberCustomFields(memberId, fixtures.deleteCustomFields)
@@ -242,3 +261,10 @@ describe('Zetkin CRUD operations', function () {
     expect(members.length).toEqual(0)
   })
 })
+
+function withStringifiedObjectValues (obj: object) {
+  return Object.entries(obj).reduce((obj, [property, value]) => {
+    obj[property] = String(value)
+    return obj
+  }, {})
+}
