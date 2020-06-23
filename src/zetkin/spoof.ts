@@ -30,7 +30,6 @@ export const attemptLogin = async () => {
   await page.setViewport(windowConfig);
   // Navigate to the login URL
   await page.goto(await zetkinLoginUrl('/', process.env.ZETKIN_CLIENT_DOMAIN || process.env.ZETKIN_NGROK_DOMAIN));
-  console.log(await page.content())
   // Enter process.env.ZETKIN_ADMIN_USERNAME in the username
   await page.waitForSelector('.LoginForm-emailInput', { timeout: 59000 });
   await page.type('.LoginForm-emailInput', process.env.ZETKIN_ADMIN_USERNAME);
@@ -77,7 +76,6 @@ export const attemptUpgrade = async () => {
   // Navigate to the login URL
   const upgradeURL = await getZetkinUpgradeUrl(url.format({ hostname: process.env.ZETKIN_CLIENT_DOMAIN || process.env.ZETKIN_NGROK_DOMAIN, pathname: '/' }))
   await page.goto(upgradeURL);
-  console.log(await page.content())
   // Click button
   await page.waitForSelector('.TwoFactorPage-submitButton', { timeout: 59000 });
   await page.click('.TwoFactorPage-submitButton')
