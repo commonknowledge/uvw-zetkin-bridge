@@ -1,0 +1,42 @@
+{
+  "name": "uvw-zetkin-bridge",
+  "description": "Bridges third party apps and Zetkin",
+  "repository": "https://github.com/commonknowledge/uvw-zetkin-bridge",
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "hobby"
+    }
+  },
+  "addons": [
+    {
+      "plan": "heroku-postgresql:hobby-basic",
+      "as": "DATABASE"
+    }
+  ],
+  "buildpacks": [
+    {
+      "url": "https://github.com/jontewks/puppeteer-heroku-buildpack"
+    },
+    {
+      "url": "heroku/nodejs"
+    }
+  ],
+  "envs": {
+    "ZETKIN_DOMAIN": "dev.zetkin.org",
+    "ZETKIN_CONSUMER_ID": {},
+    "ZETKIN_CONSUMER_SECRET": {},
+    "ZETKIN_SESSION_SECRET": {},
+    "ZETKIN_CLIENT_PROTOCOL": "https",
+    "ZETKIN_PROVIDER_PROTOCOL": "http",
+    "ZETKIN_ORG_ID": 9,
+    "ZETKIN_ADMIN_USERNAME": {},
+    "ZETKIN_ADMIN_PASSWORD": {},
+    "ZETKIN_OTP": 999999,
+    "GOCARDLESS_WEBHOOK_ENDPOINT_SECRET": {},
+    "GOCARDLESS_ACCESS_TOKEN": {},
+    "ZAMMAD_BASE_URL": {},
+    "ZAMMAD_ADMIN_USERNAME": {},
+    "ZAMMAD_ADMIN_PASSWORD": {}
+  }
+}

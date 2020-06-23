@@ -30,7 +30,7 @@ const defaultOpts = {
   zetkinDomain: 'zetk.in',
   minAuthLevel: undefined,
   secret: null,
-  ssl: false
+  ssl: process.env.ZETKIN_PROVIDER_PROTOCOL === 'https'
 };
 
 export const opts = Object.assign({}, defaultOpts, zetkinAuthOpts);
