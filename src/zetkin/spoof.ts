@@ -6,12 +6,17 @@ import { Subject } from 'rxjs';
 
 // To work with Heroku (and the Puppeteer Heroku buildpack)
 // See https://stackoverflow.com/a/55090914/1053937
-const puppeteerConfig = {
+const puppeteerConfig: puppeteer.LaunchOptions = {
+  headless: true,
   args: [
     '--no-sandbox',
     '--disable-setuid-sandbox',
   ],
 }
+
+const userAgentConfig = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'
+
+const windowConfig = {width:1280,height:1024}
 
 const loginProcess = new Subject()
 let isAttemptingLogin = false
@@ -20,6 +25,9 @@ export const attemptLogin = async () => {
   // Spin up a useragent spoofer
   const browser = await puppeteer.launch(puppeteerConfig)
   const page = await browser.newPage();
+  // https://github.com/puppeteer/puppeteer/issues/1766
+  await page.setUserAgent(userAgentConfig);
+  await page.setViewport(windowConfig);
   // Navigate to the login URL
   await page.goto(await zetkinLoginUrl('/', process.env.ZETKIN_NGROK_DOMAIN));
   console.log(await page.content())
@@ -63,6 +71,9 @@ export const attemptUpgrade = async () => {
   // Spin up a useragent spoofer
   const browser = await puppeteer.launch(puppeteerConfig)
   const page = await browser.newPage();
+  // https://github.com/puppeteer/puppeteer/issues/1766
+  await page.setUserAgent(userAgentConfig);
+  await page.setViewport(windowConfig);
   // Navigate to the login URL
   const upgradeURL = await getZetkinUpgradeUrl(url.format({ hostname: process.env.ZETKIN_NGROK_DOMAIN, pathname: '/' }))
   await page.goto(upgradeURL);
