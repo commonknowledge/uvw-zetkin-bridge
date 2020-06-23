@@ -2,6 +2,7 @@ import { zetkinLoginUrl, getZetkinUpgradeUrl, getZetkinInstance, getValidTokens 
 import puppeteer from 'puppeteer'
 import * as url from 'url';
 import { wait } from '../utils';
+import { Subject } from 'rxjs';
 
 // To work with Heroku (and the Puppeteer Heroku buildpack)
 // See https://stackoverflow.com/a/55090914/1053937
@@ -12,10 +13,21 @@ const puppeteerConfig = {
   ],
 }
 
-export const spoofLogin = async () => {
+let persistentBrowser: puppeteer.Browser
+
+const getBrowser = async () => {
+  if (!persistentBrowser) {
+    persistentBrowser = await puppeteer.launch(puppeteerConfig);
+  }
+  return persistentBrowser
+}
+
+const loginProcess = new Subject()
+let isAttemptingLogin = false
+export const attemptLogin = async () => {
   console.trace("Before login", await getValidTokens())
   // Spin up a useragent spoofer
-  const browser = await puppeteer.launch(puppeteerConfig);
+  const browser = await getBrowser()
   const page = await browser.newPage();
   // Navigate to the login URL
   await page.goto(await zetkinLoginUrl('/', process.env.ZETKIN_NGROK_DOMAIN));
@@ -28,16 +40,36 @@ export const spoofLogin = async () => {
   await page.click('.LoginForm-submitButton')
   // Get redirected back to ngrok so that the server can request an OAuth2 token via code
   await page.waitForNavigation();
-  await browser.close();
+  // await browser.close();
   await wait(1000)
-  console.trace("After login", await getValidTokens())
-  return getZetkinInstance()
+  console.log("After login", await getValidTokens())
 }
 
-export const spoofUpgrade = async () => {
+export const spoofLogin = (process: () => Promise<void> = attemptLogin) => new Promise(async resolve => {
+  const sub = loginProcess.subscribe(async () => {
+    resolve(await getZetkinInstance())
+    sub.unsubscribe()
+  })
+
+  if (!isAttemptingLogin) {
+    try {
+      isAttemptingLogin = true
+      await process()
+      loginProcess.next(Math.random())
+    } catch (e) {
+      console.error(e)
+    } finally {
+      isAttemptingLogin = false
+    }
+  }
+})
+
+const upgradeProcess = new Subject()
+let isAttemptingUpgrade = false
+export const attemptUpgrade = async () => {
   console.trace("Attempting upgrade")
   // Spin up a useragent spoofer
-  const browser = await puppeteer.launch(puppeteerConfig);
+  const browser = await getBrowser()
   const page = await browser.newPage();
   // Navigate to the login URL
   const upgradeURL = await getZetkinUpgradeUrl(url.format({ hostname: process.env.ZETKIN_NGROK_DOMAIN, pathname: '/' }))
@@ -54,5 +86,25 @@ export const spoofUpgrade = async () => {
   await page.click('.OtpPage-submitButton')
   // Get redirected back to ngrok
   await page.waitForNavigation();
-  await browser.close();
+  // await browser.close();
+  console.log("Upgrade succeeded.")
 }
+
+export const spoofUpgrade = async (process = attemptUpgrade) => new Promise(async resolve => {
+  const sub = upgradeProcess.subscribe(async () => {
+    resolve(await getZetkinInstance())
+    sub.unsubscribe()
+  })
+
+  if (!isAttemptingUpgrade) {
+    try {
+      isAttemptingUpgrade = true
+      await process()
+      upgradeProcess.next(Math.random())
+    } catch (e) {
+      console.error(e)
+    } finally {
+      isAttemptingUpgrade = false
+    }
+  }
+})
