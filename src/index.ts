@@ -3,7 +3,10 @@ import createServer from './server';
 const cluster = require('cluster');
 const numCPUs = require('os').cpus().length;
 
-const shouldMultithread = process.env.NODE_ENV === 'production'
+const shouldMultithread = (
+  process.env.NODE_ENV === 'production' &&
+  process.env.DO_NOT_MULTITHREAD === undefined
+)
 
 function exitHandler({ cleanup, exit, workers }, exitCode) {
   for (const worker of workers) {
