@@ -13,21 +13,12 @@ const puppeteerConfig = {
   ],
 }
 
-let persistentBrowser: puppeteer.Browser
-
-const getBrowser = async () => {
-  if (!persistentBrowser) {
-    persistentBrowser = await puppeteer.launch(puppeteerConfig);
-  }
-  return persistentBrowser
-}
-
 const loginProcess = new Subject()
 let isAttemptingLogin = false
 export const attemptLogin = async () => {
   console.trace("Before login", await getValidTokens())
   // Spin up a useragent spoofer
-  const browser = await getBrowser()
+  const browser = await puppeteer.launch(puppeteerConfig)
   const page = await browser.newPage();
   // Navigate to the login URL
   await page.goto(await zetkinLoginUrl('/', process.env.ZETKIN_NGROK_DOMAIN));
@@ -40,7 +31,7 @@ export const attemptLogin = async () => {
   await page.click('.LoginForm-submitButton')
   // Get redirected back to ngrok so that the server can request an OAuth2 token via code
   await page.waitForNavigation();
-  // await browser.close();
+  await browser.close();
   await wait(1000)
   console.log("After login", await getValidTokens())
 }
@@ -69,7 +60,7 @@ let isAttemptingUpgrade = false
 export const attemptUpgrade = async () => {
   console.trace("Attempting upgrade")
   // Spin up a useragent spoofer
-  const browser = await getBrowser()
+  const browser = await puppeteer.launch(puppeteerConfig)
   const page = await browser.newPage();
   // Navigate to the login URL
   const upgradeURL = await getZetkinUpgradeUrl(url.format({ hostname: process.env.ZETKIN_NGROK_DOMAIN, pathname: '/' }))
@@ -86,7 +77,7 @@ export const attemptUpgrade = async () => {
   await page.click('.OtpPage-submitButton')
   // Get redirected back to ngrok
   await page.waitForNavigation();
-  // await browser.close();
+  await browser.close();
   console.log("Upgrade succeeded.")
 }
 
