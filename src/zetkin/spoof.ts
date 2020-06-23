@@ -24,7 +24,7 @@ export const attemptLogin = async () => {
   await page.goto(await zetkinLoginUrl('/', process.env.ZETKIN_NGROK_DOMAIN));
   console.log(page.content())
   // Enter process.env.ZETKIN_ADMIN_USERNAME in the username
-  await page.waitForSelector('.LoginForm-emailInput');
+  await page.waitForSelector('.LoginForm-emailInput', { timeout: 59000 });
   await page.type('.LoginForm-emailInput', process.env.ZETKIN_ADMIN_USERNAME);
   // Enter process.env.ZETKIN_ADMIN_PASSWORD in the password
   await page.type('.LoginForm-passwordInput', process.env.ZETKIN_ADMIN_PASSWORD);
@@ -68,11 +68,11 @@ export const attemptUpgrade = async () => {
   await page.goto(upgradeURL);
   console.log(page.content())
   // Click button
-  await page.waitForSelector('.TwoFactorPage-submitButton');
+  await page.waitForSelector('.TwoFactorPage-submitButton', { timeout: 59000 });
   await page.click('.TwoFactorPage-submitButton')
   // Wait for redirect
   await page.waitForNavigation();
-  page.waitForSelector('.OtpPage-otpInput');
+  page.waitForSelector('.OtpPage-otpInput', { timeout: 59000 });
   // Now input the OTP
   await page.type('.OtpPage-otpInput', process.env.ZETKIN_OTP);
   // Submit
