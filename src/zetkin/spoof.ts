@@ -3,10 +3,19 @@ import puppeteer from 'puppeteer'
 import * as url from 'url';
 import { wait } from '../utils';
 
+// To work with Heroku (and the Puppeteer Heroku buildpack)
+// See https://stackoverflow.com/a/55090914/1053937
+const puppeteerConfig = {
+  args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+  ],
+}
+
 export const spoofLogin = async () => {
   console.trace("Before login", await getValidTokens())
   // Spin up a useragent spoofer
-  const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
+  const browser = await puppeteer.launch(puppeteerConfig);
   const page = await browser.newPage();
   // Navigate to the login URL
   await page.goto(await zetkinLoginUrl('/', process.env.ZETKIN_NGROK_DOMAIN));
@@ -28,7 +37,7 @@ export const spoofLogin = async () => {
 export const spoofUpgrade = async () => {
   console.trace("Attempting upgrade")
   // Spin up a useragent spoofer
-  const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
+  const browser = await puppeteer.launch(puppeteerConfig);
   const page = await browser.newPage();
   // Navigate to the login URL
   const upgradeURL = await getZetkinUpgradeUrl(url.format({ hostname: process.env.ZETKIN_NGROK_DOMAIN, pathname: '/' }))
