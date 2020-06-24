@@ -9,10 +9,19 @@ export const getRelevantZetkinData = async (ticketData: {
 }) => {
   const { ticket, owner, customer } = ticketData
 
-  let zetkinPerson = await getZetkinPersonByZammadCustomer(customer)
-
-  if (!zetkinPerson && customer.firstname && customer.lastname) {
-    zetkinPerson = await createZetkinPersonByZammadUser(customer)
+  if (
+    !zetkinPerson &&
+    !!user.id &&
+    !!user.firstname &&
+    !!user.lastname &&
+    (!!user.phone || !!user.mobile || !!user.email)
+  ) {
+    try {
+      zetkinPerson = await createZetkinPersonByZammadUser(user as any)
+    } catch (e) {
+      console.error(e)
+      return
+    }
   }
 
   if (!zetkinPerson) return

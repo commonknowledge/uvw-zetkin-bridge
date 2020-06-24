@@ -98,6 +98,15 @@ export const createZetkinMember = async (
   let { customFields, ...fields } = data
 
   fields = formatZetkinFields(fields)
+
+  if (
+    !fields.first_name &&
+    !fields.last_name &&
+    (!fields.phone && !fields.email)
+  ) {
+    throw new Error("Not enough data to create a zetkin member")
+  }
+
   const member: ZetkinMemberGet = (
     await aggressivelyRetry(async (client) =>
       client.resource('orgs', process.env.ZETKIN_ORG_ID, 'people').post(fields)
