@@ -1,138 +1,8 @@
-const expectedCustomFields = {
-  "data": [
-      {
-          "slug": "number_of_payments",
-          "title": "Number of Payments",
-          "id": 18,
-          "type": "text",
-          "description": ""
-      },
-      {
-          "slug": "gocardless_subscription_id",
-          "title": "GoCardless Subscription ID",
-          "id": 17,
-          "type": "text",
-          "description": ""
-      },
-      {
-          "slug": "gocardless_subscription_name",
-          "title": "GoCardless Subscription",
-          "id": 16,
-          "type": "text",
-          "description": ""
-      },
-      {
-          "type": "text",
-          "description": "",
-          "title": "Zammad URL",
-          "slug": "zammad_url",
-          "id": 15
-      },
-      {
-          "type": "text",
-          "description": "",
-          "title": "Zammad ID",
-          "slug": "zammad_id",
-          "id": 14
-      },
-      {
-          "type": "text",
-          "description": "",
-          "title": "Origin",
-          "slug": "origin",
-          "id": 13
-      },
-      {
-          "type": "text",
-          "description": "",
-          "title": "Workplace address",
-          "slug": "workplace_address",
-          "id": 12
-      },
-      {
-          "type": "text",
-          "description": "",
-          "title": "Workplace postcode",
-          "slug": "workplace_postcode",
-          "id": 11
-      },
-      {
-          "type": "text",
-          "description": "",
-          "title": "Employer postcode",
-          "slug": "employer_postcode",
-          "id": 10
-      },
-      {
-          "type": "text",
-          "description": "",
-          "title": "Employer address",
-          "slug": "employer_address",
-          "id": 9
-      },
-      {
-          "type": "text",
-          "description": "",
-          "title": "Employer",
-          "slug": "employer",
-          "id": 8
-      },
-      {
-          "type": "text",
-          "description": "",
-          "title": "Job title",
-          "slug": "job_title",
-          "id": 7
-      },
-      {
-          "slug": "gocardless_subscription",
-          "title": "GoCardless subscription",
-          "id": 6,
-          "type": "text",
-          "description": ""
-      },
-      {
-          "type": "url",
-          "description": "",
-          "title": "GoCardless customer link",
-          "slug": "gocardless_url",
-          "id": 5
-      },
-      {
-          "type": "text",
-          "description": "",
-          "title": "GoCardless customer ID",
-          "slug": "gocardless_id",
-          "id": 4
-      },
-      {
-          "type": "text",
-          "description": "",
-          "title": "Dues subscription status",
-          "slug": "gocardless_status",
-          "id": 3
-      },
-      {
-          "type": "date",
-          "description": "",
-          "title": "Last payment date",
-          "slug": "last_payment_date",
-          "id": 2
-      },
-      {
-          "type": "date",
-          "description": "",
-          "title": "First payment date",
-          "slug": "first_payment_date",
-          "id": 1
-      }
-  ]
-}
-
 import expect from 'expect'
 import { aggressivelyRetry } from './auth';
 import { DevServer } from '../dev';
-import { createZetkinMember, deleteZetkinMember, updateZetkinMemberCustomFields, findZetkinMemberByFilters, findZetkinMemberByQuery, getZetkinMemberById, formatZetkinFields, getZetkinCustomData } from './zetkin';
+import { createZetkinMember, deleteZetkinMember, updateZetkinMemberCustomFields, findZetkinMemberByFilters, findZetkinMemberByQuery, getZetkinMemberById, formatZetkinFields, getZetkinCustomData, addZetkinMemberTags, getZetkinMemberTags, removeZetkinMemberTags, getOrCreateZetkinTag } from './zetkin';
+import { expectedCustomFields, expectedTags } from './configure';
 const devServer = new DevServer()
 
 describe('Zetkin authenticator', async function () {
@@ -147,10 +17,10 @@ describe('Zetkin authenticator', async function () {
 
   it('Should get the required custom fields from Zetkin', async function () {
     this.timeout(60000)
-    const {data} = await aggressivelyRetry(async (client) =>
+    const data = await aggressivelyRetry(async (client) =>
       client.resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'fields').get()
     )
-    expect(data).toMatchObject(expectedCustomFields)
+    expect(data?.data?.data).toMatchObject(expectedCustomFields)
   })
 })
 
@@ -262,6 +132,50 @@ describe('Zetkin CRUD operations', function () {
     if (!memberId) throw new Error('Badly setup test')
     const fields = await updateZetkinMemberCustomFields(memberId, fixtures.deleteCustomFields)
     expect(fields).toBeDefined()
+  })
+
+  const tagId = 35
+  it ('Add tags to a member', async function () {
+    this.timeout(60000)
+    if (!memberId) throw new Error('Badly setup test')
+    await addZetkinMemberTags(memberId, [tagId])
+  })
+
+  it ('Get an existing tag', async function () {
+    this.timeout(60000)
+    if (!memberId) throw new Error('Badly setup test')
+    const title = expectedTags[0]
+    const tag = await getOrCreateZetkinTag(title)
+    expect(tag.title).toEqual(title)
+  })
+
+  it ('Create a new tag if necessary', async function () {
+    this.timeout(60000)
+    if (!memberId) throw new Error('Badly setup test')
+    const title = "Some Random Tag Name"+Math.random()
+    const tag = await getOrCreateZetkinTag(title)
+    expect(tag.title).toEqual(title)
+    // Then delete it
+    await aggressivelyRetry(client =>
+      client.resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'tags', tag.id).del()
+    )
+  })
+
+  it ('Get tags for a member', async function () {
+    this.timeout(60000)
+    if (!memberId) throw new Error('Badly setup test')
+    const tags = await getZetkinMemberTags(memberId)
+    expect(tags).toBeInstanceOf(Array)
+    expect(tags.length).toBeGreaterThanOrEqual(1)
+    expect(tags?.map(t => t?.id)).toEqual(expect.arrayContaining([tagId]))
+  })
+
+  it ('Remove tags to a member', async function () {
+    this.timeout(60000)
+    if (!memberId) throw new Error('Badly setup test')
+    await removeZetkinMemberTags(memberId, [tagId])
+    const tags = await getZetkinMemberTags(memberId)
+    expect(tags).toHaveLength(0)
   })
 
   it ('Delete the new member', async function () {

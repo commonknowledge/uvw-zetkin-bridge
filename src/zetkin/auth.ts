@@ -96,12 +96,12 @@ export const aggressivelyRetry = async (query: (client: { resource: any }) => an
       }
       return data
     } catch (e) {
-      if (!!e?.httpStatus && ![401, 403].includes(e.httpStatus)) {
+      if (!e.httpStatus || (!!e?.httpStatus && ![401, 403].includes(e.httpStatus))) {
         // This is not an auth issue!
         reason = 'Request was invalid'
         console.error("Request was invalid.")
         console.error(e)
-        throw new Error(e)
+        throw new Error(JSON.stringify(e))
       }
       if (e.toString().includes('Unable to sign without access token')) {
         mode = 'login'

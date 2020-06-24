@@ -120,6 +120,7 @@ export const findZetkinMemberByFilters = async (filters: Array<ZetkinFilter>, p:
 }
 
 import Phone from 'awesome-phonenumber';
+
 export const formatZetkinFields = <T extends Partial<ZetkinMemberPost>>(fields: T): T => {
   let { phone, ...data } = fields
   if (phone) {
@@ -212,6 +213,71 @@ export const updateZetkinMemberCustomFields = async (personId: number, customFie
   }))
   return responses
 } 
+
+type Tag = {
+  "description"?: string,
+  "hidden": boolean,
+  "id": number,
+  "title": string,
+}
+
+export const getOrCreateZetkinTag = async (title: string, description?: string, hidden = false) => {
+  const tags: Tag[] = (await aggressivelyRetry(async client => {
+    return client
+      .resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'tags')
+      .get()
+  }))?.data?.data
+
+  const tag = tags.find(t => t.title === title)
+  if (tag) return tag
+
+  return (await aggressivelyRetry(async client => {
+    return client
+      .resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'tags')
+      .post({
+        title,
+        description,
+        hidden
+      })
+  }))?.data?.data as Tag
+}
+
+export const addZetkinMemberTags = async (personId: (string|number), tags: number[]) => {
+  try {
+    await Promise.all(tags.map(async tag => {
+      return aggressivelyRetry(async client => {
+        return client
+          .resource('orgs', process.env.ZETKIN_ORG_ID, 'people', personId, 'tags', tag)
+          .put()
+      })
+    }))
+  } catch (e) {
+    throw new Error("Tag doesn't exist")
+  }
+}
+
+export const getZetkinMemberTags = async (personId: (string|number)): Promise<Tag[]> => {
+  const res = await aggressivelyRetry(async client => {
+    return client
+      .resource('orgs', process.env.ZETKIN_ORG_ID, 'people', personId, 'tags')
+      .get()
+  })
+  return res?.data?.data
+}
+
+export const removeZetkinMemberTags = async (personId: (string|number), tags: number[]) => {
+  try {
+    await Promise.all(tags.map(async tag => {
+      return aggressivelyRetry(async client => {
+        return client
+          .resource('orgs', process.env.ZETKIN_ORG_ID, 'people', personId, 'tags', tag)
+          .del()
+      })
+    }))
+  } catch (e) {
+    throw new Error("Tag doesn't exist")
+  }
+}
 
 export const getZetkinCustomData = async (
   personId: ZetkinMemberPost['id']

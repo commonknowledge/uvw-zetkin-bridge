@@ -1,587 +1,191 @@
-import { ZammadObjectProperty } from './types';
-import { zammad } from './zammad';
+import { aggressivelyRetry } from './auth';
 
-const properties: ZammadObjectProperty[] = [
-  {
-    "name": "zetkin_member_number",
-    "object": "User",
-    "display": "Zetkin - Member Number",
-    "active": true,
-    "data_type": "input",
-    "data_option": {
-      "default": "",
-      "type": "text",
-      "maxlength": 120,
+export const expectedCustomFields = [
+    {
+        "slug": "number_of_payments",
+        "title": "Number of Payments",
+        "id": 18,
+        "type": "text",
+        "description": ""
     },
-    "screens": {
-      "edit": {
-        "ticket.agent": {
-          "shown": true,
-          "required": false
-        },
-        "admin.user": {
-          "shown": true,
-          "required": false
-        }
-      },
-      "view": {
-        "ticket.agent": {
-          "shown": true
-        },
-        "admin.user": {
-          "shown": true
-        },
-        "ticket.customer": {
-          "shown": false
-        }
-      },
-      "create": {
-        "ticket.customer": {
-          "shown": false,
-          "required": false
-        },
-        "ticket.agent": {
-          "shown": false,
-          "required": false
-        },
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "signup": {
-        "ticket.customer": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "invite_customer": {
-        "ticket.agent": {
-          "shown": false,
-          "required": false
-        },
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "invite_agent": {
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      }
-    }
-  },
-  {
-    "name": "zetkin_url",
-    "object": "User",
-    "display": "Zetkin - Member Link",
-    "active": true,
-    "data_type": "input",
-    "data_option": {
-      "default": "",
-      "type": "text",
-      "maxlength": 1000,
+    {
+        "slug": "gocardless_subscription_id",
+        "title": "GoCardless Subscription ID",
+        "id": 17,
+        "type": "text",
+        "description": ""
     },
-    "screens": {
-      "edit": {
-        "ticket.agent": {
-          "shown": true,
-          "required": false
-        },
-        "admin.user": {
-          "shown": true,
-          "required": false
-        }
-      },
-      "view": {
-        "ticket.agent": {
-          "shown": true
-        },
-        "admin.user": {
-          "shown": true
-        },
-        "ticket.customer": {
-          "shown": false
-        }
-      },
-      "create": {
-        "ticket.customer": {
-          "shown": false,
-          "required": false
-        },
-        "ticket.agent": {
-          "shown": false,
-          "required": false
-        },
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "signup": {
-        "ticket.customer": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "invite_customer": {
-        "ticket.agent": {
-          "shown": false,
-          "required": false
-        },
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "invite_agent": {
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      }
-    }
-  },  
-  {
-    "name": "gocardless_customer_number",
-    "object": "User",
-    "display": "GoCardless - Customer Number",
-    "active": true,
-    "data_type": "input",
-    "data_option": {
-      "default": "",
-      "type": "text",
-      "maxlength": 1000,
+    {
+        "slug": "gocardless_subscription_name",
+        "title": "GoCardless Subscription",
+        "id": 16,
+        "type": "text",
+        "description": ""
     },
-    "screens": {
-      "edit": {
-        "ticket.agent": {
-          "shown": true,
-          "required": false
-        },
-        "admin.user": {
-          "shown": true,
-          "required": false
-        }
-      },
-      "view": {
-        "ticket.agent": {
-          "shown": true
-        },
-        "admin.user": {
-          "shown": true
-        },
-        "ticket.customer": {
-          "shown": false
-        }
-      },
-      "create": {
-        "ticket.customer": {
-          "shown": false,
-          "required": false
-        },
-        "ticket.agent": {
-          "shown": false,
-          "required": false
-        },
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "signup": {
-        "ticket.customer": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "invite_customer": {
-        "ticket.agent": {
-          "shown": false,
-          "required": false
-        },
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "invite_agent": {
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      }
-    }
-  },  
-  {
-    "name": "gocardless_url",
-    "object": "User",
-    "display": "GoCardless - Customer Link",
-    "active": true,
-    "data_type": "input",
-    "data_option": {
-      "default": "",
-      "type": "text",
-      "maxlength": 1000,
+    {
+        "type": "text",
+        "description": "",
+        "title": "Zammad URL",
+        "slug": "zammad_url",
+        "id": 15
     },
-    "screens": {
-      "edit": {
-        "ticket.agent": {
-          "shown": true,
-          "required": false
-        },
-        "admin.user": {
-          "shown": true,
-          "required": false
-        }
-      },
-      "view": {
-        "ticket.agent": {
-          "shown": true
-        },
-        "admin.user": {
-          "shown": true
-        },
-        "ticket.customer": {
-          "shown": false
-        }
-      },
-      "create": {
-        "ticket.customer": {
-          "shown": false,
-          "required": false
-        },
-        "ticket.agent": {
-          "shown": false,
-          "required": false
-        },
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "signup": {
-        "ticket.customer": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "invite_customer": {
-        "ticket.agent": {
-          "shown": false,
-          "required": false
-        },
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "invite_agent": {
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      }
-    }
-  },  
-  {
-    "name": "gocardless_status",
-    "object": "User",
-    "display": "GoCardless - Subscription Status",
-    "active": true,
-    "data_type": "input",
-    "data_option": {
-      "default": "",
-      "type": "text",
-      "maxlength": 1000,
+    {
+        "type": "text",
+        "description": "",
+        "title": "Zammad ID",
+        "slug": "zammad_id",
+        "id": 14
     },
-    "screens": {
-      "edit": {
-        "ticket.agent": {
-          "shown": true,
-          "required": false
-        },
-        "admin.user": {
-          "shown": true,
-          "required": false
-        }
-      },
-      "view": {
-        "ticket.agent": {
-          "shown": true
-        },
-        "admin.user": {
-          "shown": true
-        },
-        "ticket.customer": {
-          "shown": false
-        }
-      },
-      "create": {
-        "ticket.customer": {
-          "shown": false,
-          "required": false
-        },
-        "ticket.agent": {
-          "shown": false,
-          "required": false
-        },
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "signup": {
-        "ticket.customer": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "invite_customer": {
-        "ticket.agent": {
-          "shown": false,
-          "required": false
-        },
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "invite_agent": {
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      }
-    }
-  },  
-  {
-    "name": "gocardless_subscription",
-    "object": "User",
-    "display": "GoCardless - Subscription Name",
-    "active": true,
-    "data_type": "input",
-    "data_option": {
-      "default": "",
-      "type": "text",
-      "maxlength": 120,
-      "linktemplate": ""
+    {
+        "type": "text",
+        "description": "",
+        "title": "Origin",
+        "slug": "origin",
+        "id": 13
     },
-    "screens": {
-      "edit": {
-        "ticket.agent": {
-          "shown": true,
-          "required": false
-        },
-        "admin.user": {
-          "shown": true,
-          "required": false
-        }
-      },
-      "view": {
-        "ticket.agent": {
-          "shown": true
-        },
-        "admin.user": {
-          "shown": true
-        },
-        "ticket.customer": {
-          "shown": false
-        }
-      },
-      "create": {
-        "ticket.customer": {
-          "shown": false,
-          "required": false
-        },
-        "ticket.agent": {
-          "shown": false,
-          "required": false
-        },
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "signup": {
-        "ticket.customer": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "invite_customer": {
-        "ticket.agent": {
-          "shown": false,
-          "required": false
-        },
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "invite_agent": {
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      }
-    }
-  },  
-  {
-    "name": "first_payment_date",
-    "object": "User",
-    "display": "GoCardless - First Payment",
-    "active": true,
-    "data_type": "date",
-    "data_option": {
-      "diff": 24
+    {
+        "type": "text",
+        "description": "",
+        "title": "Workplace address",
+        "slug": "workplace_address",
+        "id": 12
     },
-    "screens": {
-      "view": {
-        "ticket.customer": {
-          "shown": true
-        },
-        "ticket.agent": {
-          "shown": true
-        },
-        "admin.user": {
-          "shown": true
-        }
-      },
-      "edit": {
-        "admin.user": {
-          "shown": true,
-          "required": false
-        },
-        "ticket.agent": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "create": {
-        "ticket.customer": {
-          "shown": false,
-          "required": false
-        },
-        "ticket.agent": {
-          "shown": false,
-          "required": false
-        },
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "signup": {
-        "ticket.customer": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "invite_customer": {
-        "ticket.agent": {
-          "shown": false,
-          "required": false
-        },
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "invite_agent": {
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      }
-    }
-  },
-  {
-    "name": "last_payment_date",
-    "object": "User",
-    "display": "GoCardless - Last Payment",
-    "active": true,
-    "data_type": "date",
-    "data_option": {
-      "diff": 24
+    {
+        "type": "text",
+        "description": "",
+        "title": "Workplace postcode",
+        "slug": "workplace_postcode",
+        "id": 11
     },
-    "screens": {
-      "view": {
-        "ticket.customer": {
-          "shown": true
-        },
-        "ticket.agent": {
-          "shown": true
-        },
-        "admin.user": {
-          "shown": true
-        }
-      },
-      "edit": {
-        "admin.user": {
-          "shown": true,
-          "required": false
-        },
-        "ticket.agent": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "create": {
-        "ticket.customer": {
-          "shown": false,
-          "required": false
-        },
-        "ticket.agent": {
-          "shown": false,
-          "required": false
-        },
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "signup": {
-        "ticket.customer": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "invite_customer": {
-        "ticket.agent": {
-          "shown": false,
-          "required": false
-        },
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      },
-      "invite_agent": {
-        "admin.user": {
-          "shown": false,
-          "required": false
-        }
-      }
+    {
+        "type": "text",
+        "description": "",
+        "title": "Employer postcode",
+        "slug": "employer_postcode",
+        "id": 10
+    },
+    {
+        "type": "text",
+        "description": "",
+        "title": "Employer address",
+        "slug": "employer_address",
+        "id": 9
+    },
+    {
+        "type": "text",
+        "description": "",
+        "title": "Employer",
+        "slug": "employer",
+        "id": 8
+    },
+    {
+        "type": "text",
+        "description": "",
+        "title": "Job title",
+        "slug": "job_title",
+        "id": 7
+    },
+    {
+        "slug": "gocardless_subscription",
+        "title": "GoCardless subscription",
+        "id": 6,
+        "type": "text",
+        "description": ""
+    },
+    {
+        "type": "url",
+        "description": "",
+        "title": "GoCardless customer link",
+        "slug": "gocardless_url",
+        "id": 5
+    },
+    {
+        "type": "text",
+        "description": "",
+        "title": "GoCardless customer ID",
+        "slug": "gocardless_id",
+        "id": 4
+    },
+    {
+        "type": "text",
+        "description": "",
+        "title": "Dues subscription status",
+        "slug": "gocardless_status",
+        "id": 3
+    },
+    {
+        "type": "date",
+        "description": "",
+        "title": "Last payment date",
+        "slug": "last_payment_date",
+        "id": 2
+    },
+    {
+        "type": "date",
+        "description": "",
+        "title": "First payment date",
+        "slug": "first_payment_date",
+        "id": 1
     }
-  }
 ]
 
 export const createFields = async () => {
   return Promise.all(
-    properties.map(body => zammad.post('object_manager_attributes', { body }))
+    expectedCustomFields.map(field =>
+      aggressivelyRetry(client =>
+        client
+          .resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'fields', field)
+          .post({
+            'title': field.title,
+            'slug': field.slug,
+            'type': field.type
+          })
+      )
+    )
   )
 }
 
-export const migrateDb = async () => {
-  return zammad.post('object_manager_attributes_execute_migrations')
+export const expectedTags = [
+  'Created by: GoCardless',
+  'Created by: Zammad',
+  'Pay status: pending_customer_approval',
+  'Pay status: customer_approval_denied',
+  'Pay status: active',
+  'Pay status: finished',
+  'Pay status: cancelled',
+  'Pay status: paused',
+  'Pay plan: Solidarity Network (£100)',
+  'Pay plan: Solidarity Network (£50)',
+  'Pay plan: Solidarity Network (£30)',
+  'Pay plan: Solidarity Network (£20)',
+  'Pay plan: Solidarity Network (£15)',
+  'Pay plan: Solidarity Network (£12)',
+  'Pay plan: Solidarity Network (£10)',
+  'Pay plan: Solidarity Network (£3)',
+  'Pay plan: Monthly Supporter (£10)',
+  'Pay plan: membership (gross monthly salary above £1,101)',
+  'Pay plan: membership (gross monthly salary £701–£1,100)',
+  'Pay plan: membership (gross monthly salary up to £700)',
+]
+
+export const createTags = async () => {
+  return Promise.all(
+    expectedTags.map(tag =>
+      aggressivelyRetry(client =>
+        client
+          .resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'tags')
+          .post({
+              "title": tag,
+              "hidden": false,
+              "description": ""
+          })
+      )
+    )
+  )
 }
 
-// yarn ts-node ./src/zammad/configure.ts
+// yarn ts-node ./src/zetkin/configure.ts
 //
 // (async () => {
-//   await createFields()
-//   await migrateDb()
+//   await createTags()
 // })()
