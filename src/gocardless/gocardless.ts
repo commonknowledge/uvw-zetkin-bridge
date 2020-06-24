@@ -80,26 +80,6 @@ export const getLinked = async (event: { links: Partial<AllAvailableLinks> }, ..
   return data[data.length - 1]
 }
 
-export const gocardlessQuery = async (
-  req: Express.Request,
-  res: Express.Response
-) => {
-  try {
-    if (!req.query.eventId) throw new Error("Provide an eventId in the query string.")
-    if (!req.query.resourceChain) throw new Error("Provide an resourceChain in the query string.")
-    const event = await gocardless.events.find(req.query.eventId as string)
-    const resources = (req.query.resourceChain as string).split(',')
-    const { __response__, ...gocardlessData } = await getLinked(event, ...resources as any[])
-    let zetkinMember: ZetkinMemberGet
-    if (resources[resources.length - 1] === 'customer') {
-      zetkinMember = (await findZetkinMemberByQuery((gocardlessData as GoCardless.Customer).email))[0]
-    }
-    return res.json({ gocardlessData, zetkinMember })
-  } catch (e) {
-    return res.json(e)
-  }
-}
-
 type AllAvailableLinks =
   & GoCardless.CreditorUpdateRequestLinks
   & GoCardless.CreditorLinks
