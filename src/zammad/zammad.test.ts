@@ -1,166 +1,45 @@
 import expect from 'expect'
 import supertest from 'supertest'
-import { parseZammadWebhookBody } from './zammad';
+import { zammad, ZammadUser, ZammadTicket, getTicketIdFromWebhookText, updateZammadUser, parseZammadWebhookBody } from './zammad';
 import { DevServer } from '../dev';
-import { getRelevantZetkinData } from './zetkin-sync';
+import { getRelevantZammadDataFromZetkinUser, getOrCreateZetkinPersonByZammadUser } from './zetkin-sync';
+import { ZammadObjectProperty } from './types';
+import { expectedProperties } from './configure';
+import { wait } from '../utils';
 
 // This data might change as the data relies on Zammad itself.
 // In future, mock Zammad API calls.
 const exampleWebhooks = {
-  // 
-  "Add private note to ticket": {
-    headers:
-    {
-      'user-agent': 'Zammad User Agent',
-      'accept-encoding': 'gzip;q=1.0,deflate;q=0.6,identity;q=0.3',
-      accept: '*/*',
-      host: 'commonknowledge.eu.ngrok.io',
-      'content-type': 'application/x-www-form-urlencoded',
-      connection: 'close',
-      'content-length': '561',
-      'x-forwarded-for': '2a01:4f8:171:2063::2'
-    },
-    body: {
-      payload:
-        '{"channel":"","username":"","icon_url":"https://zammad.com/assets/images/logo-200x200.png","mrkdwn":true,"text":"# New ticket","attachments":[{"text":"_\\u003chttps://test-common-knowledge.zammad.com/#ticket/zoom/37|Ticket#202006175900097\\u003e: Updated by Jan Baykara at 17/06/2020 16:50 (Europe/London)_\\n\\n\\n\\nAdd private note to ticket","mrkdwn_in":["text"],"color":"#faab00"}]}'
-    },
-    metadata: {
-      ticket: {
-        "id": 37,
-        "number": "202006175900097",
-        "title": "New ticket",
-        "owner_id": 7,
-        "customer_id": 12,
-      }
-    }
-  }
-  ,
-  "Reply to email": {
-    headers:
-    {
-      'user-agent': 'Zammad User Agent',
-      'accept-encoding': 'gzip;q=1.0,deflate;q=0.6,identity;q=0.3',
-      accept: '*/*',
-      host: 'commonknowledge.eu.ngrok.io',
-      'content-type': 'application/x-www-form-urlencoded',
-      connection: 'close',
-      'content-length': '719',
-      'x-forwarded-for': '2a01:4f8:171:2063::2'
-    },
-    body: {
-      payload:
-        '{"channel":"","username":"","icon_url":"https://zammad.com/assets/images/logo-200x200.png","mrkdwn":true,"text":"# New ticket","attachments":[{"text":"_\\u003chttps://test-common-knowledge.zammad.com/#ticket/zoom/37|Ticket#202006175900097\\u003e: Updated by Jan Baykara at 17/06/2020 16:50 (Europe/London)_\\n\\n\\n\\nReply to email\\n\\n—\\n\\nJan Baykara\\n\\nUnited Voices of the World\\n[1] https://www.uvwunion.org.uk/\\n\\n[1] https://www.uvwunion.org.uk/","mrkdwn_in":["text"],"color":"#faab00"}]}'
-    },
-    metadata: {
-      ticket: {
-        "id": 37,
-        "number": "202006175900097",
-        "title": "New ticket",
-        "owner_id": 7,
-        "customer_id": 12,
-      }
-    }
-  }
-  ,
-  "Update ticket metadata": {
-    headers:
-    {
-      'user-agent': 'Zammad User Agent',
-      'accept-encoding': 'gzip;q=1.0,deflate;q=0.6,identity;q=0.3',
-      accept: '*/*',
-      host: 'commonknowledge.eu.ngrok.io',
-      'content-type': 'application/x-www-form-urlencoded',
-      connection: 'close',
-      'content-length': '579',
-      'x-forwarded-for': '2a01:4f8:171:2063::2'
-    },
-    body: {
-      payload:
-        '{"channel":"","username":"","icon_url":"https://zammad.com/assets/images/logo-200x200.png","mrkdwn":true,"text":"# New ticket","attachments":[{"text":"_\\u003chttps://test-common-knowledge.zammad.com/#ticket/zoom/37|Ticket#202006175900097\\u003e: Updated by Jan Baykara at 17/06/2020 16:51 (Europe/London)_\\n\\n  \\n  * Job title:  -\\u003e Add details to Job","mrkdwn_in":["text"],"color":"#faab00"}]}'
-    },
-    metadata: {
-      ticket: {
-        "id": 37,
-        "number": "202006175900097",
-        "title": "New ticket",
-        "owner_id": 7,
-        "customer_id": 12,
-      }
-    }
-  }
-  ,
-  "Change ticket state to closed": {
-    headers:
-    {
-      'user-agent': 'Zammad User Agent',
-      'accept-encoding': 'gzip;q=1.0,deflate;q=0.6,identity;q=0.3',
-      accept: '*/*',
-      host: 'commonknowledge.eu.ngrok.io',
-      'content-type': 'application/x-www-form-urlencoded',
-      connection: 'close',
-      'content-length': '567',
-      'x-forwarded-for': '2a01:4f8:171:2063::2'
-    },
-    body: {
-      payload:
-        '{"channel":"","username":"","icon_url":"https://zammad.com/assets/images/logo-200x200.png","mrkdwn":true,"text":"# New ticket","attachments":[{"text":"_\\u003chttps://test-common-knowledge.zammad.com/#ticket/zoom/37|Ticket#202006175900097\\u003e: Updated by Jan Baykara at 17/06/2020 16:53 (Europe/London)_\\n\\n  \\n  * State: open -\\u003e closed","mrkdwn_in":["text"],"color":"#38ad69"}]}'
-    },
-    metadata: {
-      ticket: {
-        "id": 37,
-        "number": "202006175900097",
-        "title": "New ticket",
-        "owner_id": 7,
-        "customer_id": 12,
-      }
-    }
-  }
-  ,
-  "Create new ticket": {
-    headers:
-    {
-      'user-agent': 'Zammad User Agent',
-      'accept-encoding': 'gzip;q=1.0,deflate;q=0.6,identity;q=0.3',
-      accept: '*/*',
-      host: 'commonknowledge.eu.ngrok.io',
-      'content-type': 'application/x-www-form-urlencoded',
-      connection: 'close',
-      'content-length': '622',
-      'x-forwarded-for': '2a01:4f8:171:2063::2'
-    },
-    body: {
-      payload:
-        '{"channel":"","username":"","icon_url":"https://zammad.com/assets/images/logo-200x200.png","mrkdwn":true,"text":"# New ticket","attachments":[{"text":"_\\u003chttps://test-common-knowledge.zammad.com/#ticket/zoom/38|Ticket#202006175900104\\u003e: Created by Jan Baykara at 17/06/2020 16:54 (Europe/London)_\\n* Group: Membership\\n* Owner: Jan Baykara\\n* State: open\\n\\n\\nNew ticket created!","mrkdwn_in":["text"],"color":"#faab00"}]}'
-    },
-    metadata: {
-      ticket: {
-        "id": 38,
-        "number": "202006175900104",
-        "title": "New ticket",
-        "customer_id": 7,
-        "owner_id": 7,
+  'IdentifyByEmail': {
+    "url":"/webhooks/zammad",
+    "headers":{"user-agent":"Zammad User Agent","accept-encoding":"gzip;q=1.0,deflate;q=0.6,identity;q=0.3","accept":"*/*","host":"commonknowledge.eu.ngrok.io","content-type":"application/x-www-form-urlencoded","connection":"close","content-length":"613","x-forwarded-proto":"https","x-forwarded-for":"2a01:4f8:10a:5d1::2"},
+    "body":{"payload":"{\"channel\":\"\",\"username\":\"\",\"icon_url\":\"https://zammad.com/assets/images/logo-200x200.png\",\"mrkdwn\":true,\"text\":\"# TEST TICKET: Use email to identify a Zetkin member\",\"attachments\":[{\"text\":\"_\\u003chttps://uvw-union.zammad.com/#ticket/zoom/2|Ticket#92002\\u003e: Updated by Common Knowledge (United Voices of the World) at 24/06/2020 10:53 (Europe/London)_\\n\\n\\n\\nWebhook emitter test.\",\"mrkdwn_in\":[\"text\"],\"color\":\"#faab00\"}]}"},
+    "metadata": {
+      "ticket": {
+        id: 2,
+        number: "92002",
+        customer_id: 4,
+        title: "TEST TICKET: Use email to identify a Zetkin member"
+      },
+      user: {
+        zetkin_member_number: 1046
       }
     }
   },
   'IdentifyByPhoneNumber': {
-    headers: {
-      'user-agent': 'Zammad User Agent',
-      'accept-encoding': 'gzip;q=1.0,deflate;q=0.6,identity;q=0.3',
-      accept: '*/*',
-      host: 'commonknowledge.eu.ngrok.io',
-      'content-type': 'application/x-www-form-urlencoded',
-      connection: 'close',
-      'content-length': '622',
-      'x-forwarded-for': '2a01:4f8:171:2063::2'
-    },
-    body: {
-      payload: '{"channel":"","username":"","icon_url":"https://zammad.com/assets/images/logo-200x200.png","mrkdwn":true,"text":"# yo o need help pñeade","attachments":[{"text":"_\\u003chttps://test-common-knowledge.zammad.com/#ticket/zoom/43|Ticket#202006195900027\\u003e: Updated by Gemma Copeland at 19/06/2020 15:07 (UTC)_\\n\\n\\n\\nTest33","mrkdwn_in":["text"],"color":"#faab00"}]}'
-    },
+    "url":"/webhooks/zammad",
+    "headers":{"user-agent":"Zammad User Agent","accept-encoding":"gzip;q=1.0,deflate;q=0.6,identity;q=0.3","accept":"*/*","host":"commonknowledge.eu.ngrok.io","content-type":"application/x-www-form-urlencoded","connection":"close","content-length":"661","x-forwarded-proto":"https","x-forwarded-for":"2a01:4f8:10a:5d1::2"},
+    "body":{"payload":"{\"channel\":\"\",\"username\":\"\",\"icon_url\":\"https://zammad.com/assets/images/logo-200x200.png\",\"mrkdwn\":true,\"text\":\"# TEST TICKET: Use mobile to identify Zetkin member\",\"attachments\":[{\"text\":\"_\\u003chttps://uvw-union.zammad.com/#ticket/zoom/3|Ticket#92003\\u003e: Created by Common Knowledge (United Voices of the World) at 24/06/2020 11:11 (Europe/London)_\\n* Group: Caseworkers\\n* Owner: -\\n* State: open\\n\\n\\nTest webhook.\",\"mrkdwn_in\":[\"text\"],\"color\":\"#faab00\"}]}"},
     metadata: {
-      "id": 43,
-      "number": "202006195900027",
-      "title": "yo o need help pñeade",
-      "customer_id": 30,
+      ticket: {
+        "id": 3,
+        "number": "92003",
+        "title": "TEST TICKET: Use mobile to identify Zetkin member",
+        "customer_id": 5,
+      },
+      user: {
+        zetkin_member_number: 1045
+      }
     }
   }
 }
@@ -168,67 +47,88 @@ const exampleWebhooks = {
 const devServer = new DevServer()
 
 describe('Zammad webhook receiver', () => {
-  beforeEach(async function() { 
+  before(async function() { 
     this.timeout(10000)
     await devServer.setup()
+    await Promise.all(Object.values(exampleWebhooks).map(async w => {
+      const userId = w.metadata.ticket.customer_id
+      await updateZammadUser(userId, {
+        zetkin_member_number: null
+      })
+    }))
   })
 
-  afterEach(async function() {
+  after(async function() {
     await devServer.teardown()
   })
   
   it('Returns a 204 response if the request is valid', async () => {
-    const fixture = exampleWebhooks["Create new ticket"]
-    try {
-      await supertest(devServer.config.app)
-        .post('/webhooks/zammad')
-        .send(fixture.body)
-        .set('user-agent', fixture.headers['user-agent'])
-        .expect(204)
-    } catch (e) {
-
-    }
+    const fixture = exampleWebhooks.IdentifyByEmail
+    await supertest(devServer.config.app)
+      .post('/webhooks/zammad')
+      .send(fixture.body)
+      .set('user-agent', fixture.headers['user-agent'])
+      .expect(204)
   })
 
   it('Returns a 400 response if the request is invalid', async () => {
-    const fixture = exampleWebhooks["Create new ticket"]
-    try {
-      await supertest(devServer.config.app)
-        .post('/webhooks/zammad')
-        .send(fixture.body)
-        .set('user-agent', fixture.headers['user-agent'] + 'blah')
-        .expect(400)
-    } catch (e) {
-
-    }
+    const fixture = exampleWebhooks.IdentifyByEmail
+    await supertest(devServer.config.app)
+      .post('/webhooks/zammad')
+      .send(fixture.body)
+      .set('user-agent', fixture.headers['user-agent'] + 'blah')
+      .expect(400)
   })
 
-  it('Get the ticket metadata for a webhook payload', async function () {
-    this.timeout(7500); 
-    const fixture = exampleWebhooks["Create new ticket"]
-    const parsedData = await parseZammadWebhookBody(fixture.body as any)
-    expect(parsedData.ticket?.id).toEqual(fixture.metadata.ticket.id)
-    expect(parsedData.ticket?.number).toEqual(fixture.metadata.ticket.number)
-    expect(parsedData.ticket?.customer_id).toEqual(fixture.metadata.ticket.customer_id)
+  it("Zammad can be queried", async function () {
+    const result = await zammad.get<ZammadObjectProperty[]>('object_manager_attributes')
+    expect(result).not.toHaveProperty('error')
   })
 
   it("Zammad customer has properties for Zetkin sync data", async function () {
-    this.timeout(7500); 
-    const fixture = exampleWebhooks["Create new ticket"]
-    const parsedData = await parseZammadWebhookBody(fixture.body as any)
-    expect(parsedData.customer?.number).toBeDefined()
-    expect(parsedData.customer?.gocardless_url).toBeDefined()
-    expect(parsedData.customer?.gocardless_status).toBeDefined()
-    expect(parsedData.customer?.gocardless_subscription).toBeDefined()
-    expect(parsedData.customer?.first_payment_date).toBeDefined()
-    expect(parsedData.customer?.last_payment_date).toBeDefined()
+    const currentProperties = await zammad.get<ZammadObjectProperty[]>('object_manager_attributes')
+    const propertyNames = currentProperties.map(p => p.name)
+    const expectedPropertyNames = expectedProperties.map(p => p.name)
+    expect(propertyNames).toEqual(expect.arrayContaining(expectedPropertyNames))
   })
 
-  it("Zammad customer is identified by phone number via Zetkin", async function () {
-    this.timeout(7500); 
-    const fixture = exampleWebhooks["IdentifyByPhoneNumber"]
-    const parsedData = await parseZammadWebhookBody(fixture.body as any)
-    const relevantData = await getRelevantZetkinData(parsedData)
-    expect(relevantData?.customer.number).toEqual(5316)
+  it('Can parse webhooks and identify queryable objects', async function () {
+    const fixture = exampleWebhooks.IdentifyByEmail
+    const { ticketId } = await parseZammadWebhookBody(fixture.body)
+    expect(ticketId).toEqual(fixture.metadata.ticket.id)
+  })
+
+  it("can use an EMAIL ADDRESS to match Zammad and Zetkin profiles", async function () {
+    this.timeout(60000); 
+    const fixture = exampleWebhooks.IdentifyByEmail
+    const ticket = await zammad.get<ZammadTicket>(['tickets', fixture.metadata.ticket.id])
+    const { id, email } = await zammad.get<ZammadUser>(['users', ticket.customer_id])
+    const zetkinMember = await getOrCreateZetkinPersonByZammadUser({ id, email })
+    expect(zetkinMember).toBeDefined()
+    expect(zetkinMember.id).toEqual(fixture.metadata.user.zetkin_member_number)
+  })
+
+  it("can use a PHONE NUMBER to match Zammad and Zetkin profiles", async function () {
+    this.timeout(60000); 
+    const fixture = exampleWebhooks.IdentifyByPhoneNumber
+    const ticket = await zammad.get<ZammadTicket>(['tickets', fixture.metadata.ticket.id])
+    const { id, mobile } = await zammad.get<ZammadUser>(['users', ticket.customer_id])
+    const relevantData = await getOrCreateZetkinPersonByZammadUser({ id, mobile })
+    expect(relevantData).toBeDefined()
+    expect(relevantData.id).toEqual(fixture.metadata.user.zetkin_member_number)
+  })
+
+  it("can sync Zetkin member data to Zammad", async function () {
+    this.timeout(60000)
+    const fixture = exampleWebhooks.IdentifyByEmail
+    await supertest(devServer.config.app)
+      .post('/webhooks/zammad')
+      .send(fixture.body)
+      .set('user-agent', fixture.headers['user-agent'])
+    await wait(1000)
+    const user = await zammad.get<ZammadUser>(['users', fixture.metadata.ticket.customer_id])
+    expect(user).toBeDefined()
+    expect(user.zetkin_member_number).toBeDefined()
+    expect(user.zetkin_member_number).toEqual(String(fixture.metadata.user.zetkin_member_number))
   })
 })

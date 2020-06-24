@@ -130,11 +130,9 @@ const expectedCustomFields = {
 }
 
 import expect from 'expect'
-import { getValidTokens, aggressivelyRetry } from './auth';
-import { spoofLogin, spoofUpgrade } from './spoof';
-import { wait } from '../utils';
+import { aggressivelyRetry } from './auth';
 import { DevServer } from '../dev';
-import { createZetkinMember, deleteZetkinMember, updateZetkinMemberCustomFields, findZetkinMemberByFilters, findZetkinMemberByQuery, getZetkinMemberById, formatZetkinFields } from './zetkin';
+import { createZetkinMember, deleteZetkinMember, updateZetkinMemberCustomFields, findZetkinMemberByFilters, findZetkinMemberByQuery, getZetkinMemberById, formatZetkinFields, getZetkinCustomData } from './zetkin';
 const devServer = new DevServer()
 
 describe('Zetkin authenticator', async function () {
@@ -145,16 +143,6 @@ describe('Zetkin authenticator', async function () {
 
   afterEach(async function() {
     await devServer.teardown()
-  })
-
-  it('Should automatically login and upgrade on request', async function () {
-    this.timeout(25000)
-    this.retries(3)
-    await spoofLogin()
-    await wait(2000)
-    const tokens = await getValidTokens()
-    expect(tokens.length).toBeGreaterThan(0)
-    await spoofUpgrade()
   })
 
   it('Should get the required custom fields from Zetkin', async function () {
@@ -174,10 +162,13 @@ const fixtures = {
     phone: "077041000" // missing digits
   },
   member: {
-    first_name: "TEST",
-    last_name: "TEST",
-    email: "TEST@TESt.TEST",
-    phone: "7704-100 000"
+    first_name: "Sometest",
+    last_name: "Commonperson",
+    email: "sometest@commonknowledge.coop",
+    phone: "7704-100 000",
+    customFields: {
+      gocardless_status: "Active"
+    }
   },
   customFields: {
     gocardless_id: 1,
@@ -222,10 +213,13 @@ describe('Zetkin CRUD operations', function () {
 
   it ('Should create a new member', async function () {
     this.timeout(60000)
-    let member
-    member = await createZetkinMember(fixtures.member)
+    const member = await createZetkinMember(fixtures.member)
     memberId = member.id
-    expect(member.first_name).toEqual(fixtures.member.first_name)
+    const { customFields, ...standardFields } = fixtures.member
+    expect(member.first_name).toEqual(standardFields.first_name)
+    const customData = await getZetkinCustomData(member.id)
+    expect(customData.map(c => c.field.slug)).toEqual(expect.arrayContaining(Object.keys(fixtures.member.customFields)))
+    expect(customData.map(c => c.value)).toEqual(expect.arrayContaining(Object.values(fixtures.member.customFields)))
   })
 
   it ('Find a member by ID', async function () {
@@ -238,7 +232,7 @@ describe('Zetkin CRUD operations', function () {
   it ('Find a member by query', async function () {
     this.timeout(60000)
     if (!memberId) throw new Error('Badly setup test')
-    const members = await findZetkinMemberByQuery(fixtures.member.email)
+    const members = await findZetkinMemberByQuery(`${fixtures.member.first_name} ${fixtures.member.last_name}`)
     // @ts-ignore
     expect(members).toBeInstanceOf(Array)
     expect(members.length).toBeGreaterThan(0)
@@ -249,7 +243,7 @@ describe('Zetkin CRUD operations', function () {
     this.timeout(60000)
     if (!memberId) throw new Error('Badly setup test')
     const members = await findZetkinMemberByFilters([
-      ['phone', '==', fixtures.member.phone]
+      ['email', '==', fixtures.member.email]
     ])
     expect(members).toBeInstanceOf(Array)
     expect(members.length).toBeGreaterThan(0)

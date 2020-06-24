@@ -3,7 +3,9 @@ import supertest from 'supertest'
 import db from "../db"
 import GoCardless from 'gocardless-nodejs';
 import { DevServer } from '../dev';
-import { getRelevantGoCardlessData, gocardless } from './gocardless';
+import { getRelevantZetkinDataFromGoCardlessCustomer, gocardless, dateFormat, getCustomerUrl } from './gocardless';
+import { getZetkinPersonByGoCardlessCustomer, getOrCreateZetkinPersonByGoCardlessCustomer, mapGoCardlessCustomerToZetkinMember } from './zetkin-sync';
+import { getZetkinCustomData } from '../zetkin/zetkin';
 
 const webhookRequest = {
   body: {
@@ -101,13 +103,43 @@ describe('Gocardless webhook receiver', () => {
   // })
 
   it('Gets relevant gocardless data for a known customer', async function () {
-    const data = await getRelevantGoCardlessData("CU000STHXDH55S")
+    const id = "CU000STHXDH55S"
+    const data = await getRelevantZetkinDataFromGoCardlessCustomer(id)
     expect(data).toEqual({
+      gocardless_id: id,
+      gocardless_url: getCustomerUrl(id),
       gocardless_subscription_name: "UVW membership (gross monthly salary above £1,101)",
       gocardless_subscription_id: "SB000940CGEJVF",
       gocardless_status: "active",
-      last_payment_date: new Date("2020-06-02T11:29:58.987Z"),
-      first_payment_date: new Date("2020-05-01T10:40:29.090Z"),
+      last_payment_date: "2020-06-02",
+      first_payment_date: "2020-05-01",
+      number_of_payments: 2
     })
+  })
+
+  it('Matches zetkin members to gocardless customers', async function () {
+    this.timeout(100000)
+    const { customers } = await gocardless.customers.list({
+      limit: "2",
+      created_at: {
+        lt: new Date(Date.now() - (1000 * 60 * 60 * 24 * 100)).toISOString()
+      }
+    })
+    for (let customer of customers) {
+      const member = await getOrCreateZetkinPersonByGoCardlessCustomer(customer)
+      console.log(member.id)
+      const { customFields, ...memberFields } = await mapGoCardlessCustomerToZetkinMember(customer)
+      expect(Object.values(member)).toEqual(expect.arrayContaining(Object.values(memberFields).filter(Boolean)))
+      const actualCustomFields = await getZetkinCustomData(member.id)
+      expect(
+        Object.values(actualCustomFields.map(a => a.value))
+      ).toEqual(
+        expect.arrayContaining(
+          Object.values(customFields)
+            .filter(Boolean)
+            .map(String)
+          )
+      )
+    }
   })
 })

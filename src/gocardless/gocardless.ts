@@ -110,7 +110,11 @@ type AllAvailableLinks =
 
 type linkResourceKey = keyof AllAvailableLinks
 
-export const getRelevantGoCardlessData = async (
+import { format } from 'date-fns'
+export const dateFormat = (d: Date): string => format(d, 'yyyy-MM-dd')
+export const getCustomerUrl = (customerId: string) => `https://manage.gocardless.com/customers/${customerId}`
+
+export const getRelevantZetkinDataFromGoCardlessCustomer = async (
   customerId: string,
   subscription?: GoCardless.Subscription,
   payments?: GoCardless.Payment[]
@@ -142,16 +146,18 @@ export const getRelevantGoCardlessData = async (
   const first_payment = payments.length === 0 ? null
     : payments[0]
   if (first_payment) {
-    first_payment_date = new Date((await gocardless.payouts.find(first_payment.links.payout)).created_at).toISOString()
+    first_payment_date = dateFormat(new Date((await gocardless.payouts.find(first_payment.links.payout)).created_at))
   }
   const last_payment = payments.length === 0 ? null
     : payments[payments.length - 1]
   if (last_payment) {
-    last_payment_date = new Date((await gocardless.payouts.find(last_payment.links.payout)).created_at).toISOString()
+    last_payment_date = dateFormat(new Date((await gocardless.payouts.find(last_payment.links.payout)).created_at))
   }
   const number_of_payments = payments.length
 
   return {
+    gocardless_id: customerId,
+    gocardless_url: getCustomerUrl(customerId),
     gocardless_subscription_name,
     gocardless_subscription_id,
     gocardless_status,

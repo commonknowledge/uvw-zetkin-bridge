@@ -1,7 +1,8 @@
 import expect from 'expect'
-import { spoofLogin, attemptLogin, attemptUpgrade } from './spoof';
+import { spoofLogin, attemptLogin, attemptUpgrade, spoofUpgrade } from './spoof';
 import { DevServer } from '../dev';
 import { times } from 'lodash';
+import { getValidTokens } from './auth';
 const devServer = new DevServer()
 
 describe('Zetkin auto-login should be resource-efficient', function () {
@@ -20,12 +21,14 @@ describe('Zetkin auto-login should be resource-efficient', function () {
     let i
 
     i = 0
-    const process = async () => {
+    const fn = async () => {
       i++
       await attemptLogin()
     }
-    await Promise.all(times(100, () => spoofLogin(process)))
+    await Promise.all(times(100, () => spoofLogin(fn)))
     expect(i).toEqual(1)
+    const tokens = await getValidTokens()
+    expect(tokens.length).toEqual(1)
   })
 
   it ('Should upgrade only once when called a few times', async function () {
@@ -33,11 +36,11 @@ describe('Zetkin auto-login should be resource-efficient', function () {
     let i
 
     i = 0
-    const process = async () => {
+    const fn = async () => {
       i++
       await attemptUpgrade()
     }
-    await Promise.all(times(100, () => spoofLogin(process)))
+    await Promise.all(times(100, () => spoofUpgrade(fn)))
     expect(i).toEqual(1)
   })
 })

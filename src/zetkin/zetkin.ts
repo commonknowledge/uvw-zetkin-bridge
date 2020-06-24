@@ -27,21 +27,58 @@ export type ZetkinMemberPost = ZetkinMemberData & Partial<ZetkinMemberMetadata>
 
 export type ZetkinMemberGet = ZetkinMemberMetadata & ZetkinMemberData
 
+export const findZetkinMemberByProperties = async (member: Partial<ZetkinMemberPost>): Promise<null | ZetkinMemberGet> => {
+  let foundMember: ZetkinMemberGet
+
+  if (member.id) {
+    foundMember = await getZetkinMemberById(member.id)
+  }
+
+  if (foundMember) return foundMember
+
+  if (
+    member.email ||
+    // Possibly a bit dodgy tbh,
+    // given there can be multiple people with the same name...
+    (member.first_name && member.last_name)
+  ) {
+    foundMember = (await findZetkinMemberByFilters([
+      ['email', '==', member.email],
+      ['first_name', '==', member.first_name],
+      ['last_name', '==', member.last_name]
+    ]))?.[0]
+  }
+
+  if (foundMember) return foundMember
+
+  // Try some variations of the phone number
+  if (member.phone) {
+    const number = new Phone(member.phone, 'GB')
+    const variations = {
+        original: number.getNumber().replace(/\s/mgi, ''),
+        local: number.getNumber('national').replace(/\s/mgi, ''),
+        international: number.getNumber('international').replace(/\s/mgi, ''),
+    }
+
+    for (const phoneVariant of Object.values(variations)) {
+      foundMember = (await findZetkinMemberByFilters([
+        ['phone', '==', phoneVariant]
+      ]))?.[0]
+      if (foundMember) return foundMember
+    }
+  }
+}
+
 export const upsertZetkinPerson = async (member: ZetkinMemberPost): Promise<ZetkinMemberGet | null> => {
   try {
-    let foundMember
-    if (member.id) {
-      foundMember = await getZetkinMemberById(member.id)
-    } else if (member.email) {
-      foundMember = await findZetkinMemberByQuery(member.email)
-    }
+    let foundMember = await findZetkinMemberByProperties(member)
     if (!foundMember) throw new Error("Couldn't find member")
     const updatedMember = await updateZetkinMember(foundMember.id, member)
     return updatedMember
   } catch (e) {
     // console.error("Couldn't find member, so creating")
     try {
-      return createZetkinMember(member)
+      return await createZetkinMember(member)
     } catch (e) {
       console.error("Couldn't create member", e)
     }
@@ -56,6 +93,9 @@ export const getZetkinMemberById = async (id: ZetkinMemberPost['id']): Promise<Z
 }
 
 export const findZetkinMemberByQuery = async (q: string): Promise<ZetkinMemberGet[] | null> => {
+  if (q.includes('@')) {
+    console.warn("You're trying to query an email but this won't work.")
+  }
   const data = await aggressivelyRetry(async (client) =>
     client
       .resource('orgs', process.env.ZETKIN_ORG_ID, 'search', 'person')
@@ -154,7 +194,7 @@ export const updateZetkinMember = async (
 
 export const updateZetkinMemberCustomFields = async (personId: number, customFields: object) => {
   const responses: { [key: string]: string | false } = {}
-  for (const field in customFields) {
+  await Promise.all(Object.keys(customFields).map(async field => {
     const value = (customFields[field] !== null && customFields[field] !== undefined)
       ? customFields[field].toString()
       : null
@@ -169,13 +209,13 @@ export const updateZetkinMemberCustomFields = async (personId: number, customFie
     } catch (e) {
       responses[field] = false
     }
-  }
+  }))
   return responses
 } 
 
 export const getZetkinCustomData = async (
   personId: ZetkinMemberPost['id']
-) => {
+): Promise<ZetkinCustomFields> => {
   const data = (
     await aggressivelyRetry(async (client) =>
       client
@@ -183,7 +223,7 @@ export const getZetkinCustomData = async (
         .get()
     )
   )
-  return data?.data?.data || [] as ZetkinCustomFields
+  return data?.data?.data || []
 }
 
 export type ZetkinCustomFields = Datum[]

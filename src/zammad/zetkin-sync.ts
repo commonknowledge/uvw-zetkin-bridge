@@ -1,13 +1,16 @@
 import { ZammadUser, ZammadTicket, updateZammadUser } from './zammad';
-import { ZetkinMemberGet, updateZetkinMember, findZetkinMemberByFilters, createZetkinMember, getZetkinCustomData, addZetkinNoteToMember } from '../zetkin/zetkin';
-import Phone from 'awesome-phonenumber';
+import { ZetkinMemberGet, updateZetkinMember, findZetkinMemberByFilters, createZetkinMember, getZetkinCustomData, addZetkinNoteToMember, getZetkinMemberById, ZetkinFilter, findZetkinMemberByProperties, ZetkinMemberPost } from '../zetkin/zetkin';
 
-export const getRelevantZetkinData = async (ticketData: {
-  ticket?: ZammadTicket;
-  owner?: ZammadUser;
-  customer?: ZammadUser;
-}) => {
-  const { ticket, owner, customer } = ticketData
+export const createZetkinPersonByZammadUser = async (
+  customer: MinimumRequiredZammadUserForZetkin
+) => {
+  return createZetkinMember(await mapZammadCustomerToZetkinMember(customer))
+}
+
+export const getOrCreateZetkinPersonByZammadUser = async (
+  user: Partial<Omit<ZammadUser, 'id'>> & Pick<ZammadUser, 'id'>
+) => {
+  let zetkinPerson = await getZetkinPersonByZammadCustomer(user)
 
   if (
     !zetkinPerson &&
@@ -20,97 +23,70 @@ export const getRelevantZetkinData = async (ticketData: {
       zetkinPerson = await createZetkinPersonByZammadUser(user as any)
     } catch (e) {
       console.error(e)
-      return
+      return zetkinPerson
     }
   }
 
-  if (!zetkinPerson) return
-
-  const customData = await getZetkinCustomData(zetkinPerson.id)
-
-  const getCustomData = (slug: string) => customData.find(d => d.field.slug === slug)?.value
-
-  const updatedData = {
-    customer: {
-      firstname: zetkinPerson.first_name,
-      lastname: zetkinPerson.last_name,
-      email: zetkinPerson.email,
-      phone: zetkinPerson.phone,
-      addZetkinNoteToMember: zetkinPerson.street_address,
-      number: String(zetkinPerson.id),
-      gocardless_url: getCustomData('gocardless_url'),
-      gocardless_status: getCustomData('gocardless_status'),
-      gocardless_subscription: getCustomData('gocardless_subscription_name'),
-      first_payment_date: getCustomData('first_payment_date'),
-      last_payment_date: getCustomData('last_payment_date')
-    } as Partial<ZammadUser>
-  }
-
-  return updatedData
+  return zetkinPerson
 }
 
-export const getZetkinPersonByZammadCustomer = async (customer: ZammadUser) => {
-  function update(member: ZetkinMemberGet) {
-    updateZetkinMember(member.id, {
-      customFields: {
-        origin: 'Zammad Case',
-        zammad_id: customer.id,
-        zammad_url: new URL(`/#user/profile/${customer.id}`, process.env.ZAMMAD_BASE_URL)
-      }
-    })
+export const getRelevantZammadDataFromZetkinUser = async (
+  zetkinPerson: ZetkinMemberGet
+) => {
+  let { customFields } = zetkinPerson 
+  if (!customFields) {
+    customFields = await getZetkinCustomData(zetkinPerson.id)
   }
 
-  let member: ZetkinMemberGet
+  const getCustomData = (slug: string) => customFields.find(d => d.field.slug === slug)?.value
 
-  // Then look for canonical identifiers
-  // 1. Email
-  member = (await findZetkinMemberByFilters([
-    ['email', '==', /a-z/.test(customer.firstname) ? customer.email : undefined],
-    ['first_name', '==', /a-z/.test(customer.firstname) ? customer.firstname : undefined],
-    ['last_name', '==', /a-z/.test(customer.firstname) ? customer.lastname : undefined]
-  ]))?.[0]
-  if (member) {
-    // Save if found
-    update(member)
-    return member
+  const updatedUser: Partial<ZammadUser> = {
+    firstname: zetkinPerson.first_name,
+    lastname: zetkinPerson.last_name,
+    email: zetkinPerson.email,
+    phone: zetkinPerson.phone,
+    address: zetkinPerson.street_address,
+    zetkin_member_number: String(zetkinPerson.id),
+    zetkin_url: `http://organize.${process.env.ZETKIN_DOMAIN}/people/person:${String(zetkinPerson.id)}`,
+    gocardless_customer_number: getCustomData('gocardless_id'),
+    gocardless_url: getCustomData('gocardless_url'),
+    gocardless_status: getCustomData('gocardless_status'),
+    gocardless_subscription: getCustomData('gocardless_subscription_name'),
+    first_payment_date: getCustomData('first_payment_date'),
+    last_payment_date: getCustomData('last_payment_date')
   }
 
-
-  // Try some variations of the phone number
-  if (customer.mobile || customer.phone) {
-    const number = new Phone(customer.mobile || customer.phone, 'GB')
-    const variations = {
-        original: number.getNumber().replace(/\s/mgi, ''),
-        local: number.getNumber('national').replace(/\s/mgi, ''),
-        international: number.getNumber('international').replace(/\s/mgi, ''),
-    }
-
-    for (const phoneVariant of Object.values(variations)) {
-      member = (await findZetkinMemberByFilters([
-        ['phone', '==', phoneVariant]
-      ]))[0]
-      if (member) {
-        // Save if found
-        update(member)
-        return member
-      }
-    }
-  }
-
-  return null
+  return updatedUser
 }
 
-export const createZetkinPersonByZammadUser = async (customer: ZammadUser) => {
-  return createZetkinMember({
+export const getZetkinPersonByZammadCustomer = async (customer: Partial<ZammadUser>) => {
+  const zetkinData = await mapZammadCustomerToZetkinMember(customer)
+  const member: ZetkinMemberGet = await findZetkinMemberByProperties(zetkinData)
+  if (!member) return null
+  const { customFields } = zetkinData
+  await updateZetkinMember(member.id, { customFields })
+  return member
+}
+
+export const mapZammadCustomerToZetkinMember = async (customer: MinimumRequiredZammadUserForZetkin): Promise<ZetkinMemberPost> => {
+  return {
+    id: customer.zetkin_member_number as any,
     first_name: customer.firstname,
     last_name: customer.lastname,
     email: customer.email,
-    phone: customer.phone,
+    phone: customer.mobile || customer.phone,
     city: customer.city,
     customFields: {
       origin: 'Zammad Case',
       zammad_id: customer.id,
       zammad_url: new URL(`/#user/profile/${customer.id}`, process.env.ZAMMAD_BASE_URL)
     }
-  })
+  }
 }
+
+type MinimumRequiredZammadUserForZetkin = Partial<ZammadUser>
+// (
+//   Partial<ZammadUser>
+//   & Pick<ZammadUser, 'id' | 'firstname' | 'lastname'>
+//   & (Pick<ZammadUser, 'phone'> | Pick<ZammadUser, 'mobile'> | Pick<ZammadUser, 'email'>)
+// )

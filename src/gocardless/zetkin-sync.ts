@@ -1,7 +1,6 @@
 import GoCardless from 'gocardless-nodejs';
-import { getLinked, getRelevantGoCardlessData } from './gocardless';
-import { updateZetkinMember, ZetkinMemberGet, addZetkinNoteToMember, upsertZetkinPerson, findZetkinMemberByQuery, findZetkinMemberByFilters, updateZetkinMemberCustomFields } from '../zetkin/zetkin';
-import db from '../db';
+import { getLinked, getRelevantZetkinDataFromGoCardlessCustomer } from './gocardless';
+import { updateZetkinMember, ZetkinMemberGet, addZetkinNoteToMember, upsertZetkinPerson, findZetkinMemberByQuery, findZetkinMemberByFilters, updateZetkinMemberCustomFields, findZetkinMemberByProperties, ZetkinMemberPost } from '../zetkin/zetkin';
 import Phone from 'awesome-phonenumber'
 
 export const getInterestingEvents = (events: GoCardless.Event[]) => {
@@ -10,8 +9,9 @@ export const getInterestingEvents = (events: GoCardless.Event[]) => {
   return interestingPaymentEvents
 }
 
-export const upsertZetkinPersonByGoCardlessCustomer = async (customer: GoCardless.Customer) => {
-  return upsertZetkinPerson({
+export const mapGoCardlessCustomerToZetkinMember = async (customer: GoCardless.Customer): Promise<ZetkinMemberPost> => {
+  const customFields = await getRelevantZetkinDataFromGoCardlessCustomer(customer.id)
+  return {
     first_name: customer.given_name,
     last_name: customer.family_name,
     email: customer.email,
@@ -20,70 +20,23 @@ export const upsertZetkinPersonByGoCardlessCustomer = async (customer: GoCardles
     city: customer.city,
     zip_code: customer.postal_code,
     customFields: {
-      gocardless_id: customer.id,
-      gocardless_url: `https://manage.gocardless.com/customers/${customer.id}`,
+      ...customFields,
       origin: "GoCardless"
     }
-  })
+  }
 }
 
 export const getZetkinPersonByGoCardlessCustomer = async (customer: GoCardless.Customer) => {
-  function update(member: ZetkinMemberGet) {
-    updateZetkinMember(member.id, {
-      customFields: {
-        gocardless_id: customer.id,
-        gocardless_url: `https://manage.gocardless.com/customers/${customer.id}`
-      }
-    })
-  }
-
-  let member: ZetkinMemberGet
-
-  member = (await findZetkinMemberByFilters([
-    ['email', '==', customer.email],
-    ['first_name', '==', customer.given_name],
-    ['last_name', '==', customer.family_name]
-  ]))?.[0]
-  if (member) {
-    // Save if found
-    update(member)
-    return member
-  }
-
-  // Try some variations of the phone number
-  if (customer.phone_number) {
-    const number = new Phone(customer.phone_number, 'GB')
-    const variations = {
-        original: number.getNumber().replace(/\s/mgi, ''),
-        local: number.getNumber('national').replace(/\s/mgi, ''),
-        international: number.getNumber('international').replace(/\s/mgi, ''),
-    }
-
-    for (const phoneVariant of Object.values(variations)) {
-      member = (await findZetkinMemberByFilters([
-        ['phone', '==', phoneVariant]
-      ]))?.[0]
-      if (member) {
-        // Save if found
-        update(member)
-        return member
-      }
-    }
-  }
-
-  return null
+  const zetkinData = await mapGoCardlessCustomerToZetkinMember(customer)
+  const member: ZetkinMemberGet = await findZetkinMemberByProperties(zetkinData)
+  if (!member) return null
+  const { customFields } = zetkinData
+  await updateZetkinMember(member.id, { customFields })
+  return member
 }
 
 export const getOrCreateZetkinPersonByGoCardlessCustomer = async (customer: GoCardless.Customer): Promise<ZetkinMemberGet> => {
-  let zetkinPerson = await getZetkinPersonByGoCardlessCustomer(customer)
-  if (!zetkinPerson) {
-    try {
-    zetkinPerson = await upsertZetkinPersonByGoCardlessCustomer(customer)
-    } catch(e) {
-      console.error(e)
-    }
-  }
-  return zetkinPerson
+  return upsertZetkinPerson(await mapGoCardlessCustomerToZetkinMember(customer))
 }
 
 export const processEvent = async (event: GoCardless.Event) => {
@@ -99,7 +52,7 @@ export const processEvent = async (event: GoCardless.Event) => {
       const message = `${event.details.description}. Payment details: ${parseInt(payment.amount) / 100} ${payment.currency} ${payment.description}}`
 
       await addNoteToZetkinPerson(zetkinPerson.id, message)
-      await updateZetkinMemberCustomFields(zetkinPerson.id, await getRelevantGoCardlessData(customer.id))
+      await updateZetkinMemberCustomFields(zetkinPerson.id, await getRelevantZetkinDataFromGoCardlessCustomer(customer.id))
     } else if (
       event.resource_type === 'subscriptions' &&
       ["finished", "cancelled", "paused", "resumed", "amended", "customer_approval_granted", "customer_approval_denied", "created"].includes(event.action)
@@ -111,7 +64,7 @@ export const processEvent = async (event: GoCardless.Event) => {
       const message = `${event.details.description}. Subscription name: ${subscription.name}`
 
       await addNoteToZetkinPerson(zetkinPerson.id, message)
-      await updateZetkinMemberCustomFields(zetkinPerson.id, await getRelevantGoCardlessData(customer.id))
+      await updateZetkinMemberCustomFields(zetkinPerson.id, await getRelevantZetkinDataFromGoCardlessCustomer(customer.id))
     }
   } catch (e) {
     console.error(e)

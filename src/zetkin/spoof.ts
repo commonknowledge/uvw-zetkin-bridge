@@ -21,7 +21,7 @@ const windowConfig = {width:1280,height:1024}
 const loginProcess = new Subject()
 let isAttemptingLogin = false
 export const attemptLogin = async () => {
-  console.trace("Before login", await getValidTokens())
+  console.trace("🔐 Before login", await getValidTokens())
   // Spin up a useragent spoofer
   const browser = await puppeteer.launch(puppeteerConfig)
   const page = await browser.newPage();
@@ -41,10 +41,11 @@ export const attemptLogin = async () => {
   await page.waitForNavigation();
   await browser.close();
   await wait(1000)
-  console.log("After login", await getValidTokens())
+  console.log("🔐 After login", await getValidTokens())
 }
 
-export const spoofLogin = (process: () => Promise<void> = attemptLogin) => new Promise(async resolve => {
+export const spoofLogin = (fn: () => Promise<void> = attemptLogin) => new Promise(async resolve => {
+  console.log("🔐 spoofLogin", { isAttemptingLogin })
   const sub = loginProcess.subscribe(async () => {
     resolve(await getZetkinInstance())
     sub.unsubscribe()
@@ -53,7 +54,7 @@ export const spoofLogin = (process: () => Promise<void> = attemptLogin) => new P
   if (!isAttemptingLogin) {
     try {
       isAttemptingLogin = true
-      await process()
+      await fn()
       loginProcess.next(Math.random())
     } catch (e) {
       console.error(e)
@@ -66,7 +67,7 @@ export const spoofLogin = (process: () => Promise<void> = attemptLogin) => new P
 const upgradeProcess = new Subject()
 let isAttemptingUpgrade = false
 export const attemptUpgrade = async () => {
-  console.trace("Attempting upgrade")
+  console.trace("🔐 Attempting upgrade")
   // Spin up a useragent spoofer
   const browser = await puppeteer.launch(puppeteerConfig)
   const page = await browser.newPage();
@@ -89,10 +90,11 @@ export const attemptUpgrade = async () => {
   // Get redirected back to ngrok
   await page.waitForNavigation();
   await browser.close();
-  console.log("Upgrade succeeded.")
+  console.log("🔐 Upgrade succeeded")
 }
 
-export const spoofUpgrade = async (process = attemptUpgrade) => new Promise(async resolve => {
+export const spoofUpgrade = async (fn = attemptUpgrade) => new Promise(async resolve => {
+  console.log("🔐 spoofUpgrade", { isAttemptingUpgrade })
   const sub = upgradeProcess.subscribe(async () => {
     resolve(await getZetkinInstance())
     sub.unsubscribe()
@@ -101,7 +103,7 @@ export const spoofUpgrade = async (process = attemptUpgrade) => new Promise(asyn
   if (!isAttemptingUpgrade) {
     try {
       isAttemptingUpgrade = true
-      await process()
+      await fn()
       upgradeProcess.next(Math.random())
     } catch (e) {
       console.error(e)

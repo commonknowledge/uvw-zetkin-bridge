@@ -2,11 +2,11 @@ import * as Express from 'express'
 import * as fetch from 'node-fetch'
 import { merge } from 'lodash'
 import * as path from 'path';
-import { getRelevantZetkinData } from './zetkin-sync';
+import { getRelevantZammadDataFromZetkinUser, getOrCreateZetkinPersonByZammadUser } from './zetkin-sync';
 
 type URLType = fetch.RequestInfo | (string|number)[]
 
-class Zammad {
+export class Zammad {
   constructor (
     private baseUri: string,
     private userName: string,
@@ -42,37 +42,35 @@ class Zammad {
     return data.json()
   }
 
-  async get <D>(url: URLType, init?: fetch.RequestInit) {
+  async get <D>(url: URLType, init: fetch.RequestInit = {}) {
     return this.fetch<D>(url, { ...init, method: 'GET' })
   }
 
-  async post <D>(url: URLType, init?: fetch.RequestInit) {
-    return this.fetch<D>(url, { ...init, method: 'POST' })
+  async post <D>(url: URLType, init: Omit<fetch.RequestInit, 'body'> & { body?: any } = {}) {
+    return this.fetch<D>(url, { ...init, body: init?.body ? JSON.stringify(init.body) : undefined, method: 'POST' })
   }
 
-  async patch <D>(url: URLType, init?: fetch.RequestInit) {
-    return this.fetch<D>(url, { ...init, method: 'PATCH' })
+  async patch <D>(url: URLType, init: Omit<fetch.RequestInit, 'body'> & { body?: any } = {}) {
+    return this.fetch<D>(url, { ...init, body: init?.body ? JSON.stringify(init.body) : undefined, method: 'PATCH' })
   }
 
-  async put <D>(url: URLType, init?: fetch.RequestInit) {
-    return this.fetch<D>(url, { ...init, method: 'PUT' })
+  async put <D>(url: URLType, init: Omit<fetch.RequestInit, 'body'> & { body?: any } = {}) {
+    return this.fetch<D>(url, { ...init, body: init?.body ? JSON.stringify(init.body) : undefined, method: 'PUT' })
   }
 
-  async delete <D>(url: URLType, init?: fetch.RequestInit) {
+  async delete <D>(url: URLType, init: fetch.RequestInit = {}) {
     return this.fetch<D>(url, { ...init, method: 'DELETE' })
   }
 }
 
-const zammad = new Zammad(
+export const zammad = new Zammad(
   process.env.ZAMMAD_BASE_URL,
   process.env.ZAMMAD_ADMIN_USERNAME,
   process.env.ZAMMAD_ADMIN_PASSWORD,
 )
 
-export const updateZammadUser = async (id: any, data: any) => {
-  return zammad.put(['users', id], {
-    body: JSON.stringify(data)
-  })
+export const updateZammadUser = async (id: any, body: Partial<ZammadUser>) => {
+  return zammad.put(['users', id], { body })
 }
 
 export const handleZammadWebhook = async (
@@ -83,31 +81,29 @@ export const handleZammadWebhook = async (
   if (req.headers["user-agent"] !== 'Zammad User Agent' || !req.body) {
     return res.status(400).send() 
   }
-  res.status(204).send()
   console.log("Received Zammad webhook")
 
   // Attach Zetkin user if necessary
-  // console.log(req.body)
-  const ticketData = await parseZammadWebhookBody(req.body)
-  // console.log({ ticketData })
-  const customer = ticketData?.customer
-  if (!ticketData || !customer) {
-    // console.log("No ticketData or customer on this webhook")
+  const { ticketId } = await parseZammadWebhookBody(req.body)
+  const ticket = await zammad.get<ZammadTicket>(['tickets', ticketId])
+  const customer = await zammad.get<ZammadUser>(['users', ticket?.customer_id])
+  if (!customer) {
     return
   }
-  // if (customer.number) {
-  //   // console.log("This user already has a zetkin data link")
-  //   // TODO: Sync data back to Zetkin
-  //   return
+
+  // TODO: Sync data back to Zetkin
+  // if (customer.zetkin_member_number) {
+  //    ...
   // }
 
-  const data = await getRelevantZetkinData(ticketData)
-  if (data.customer) {
-    await updateZammadUser(
-      ticketData?.customer?.id,
-      data.customer
-    )
-  }
+  const matchingZetkinMember = await getOrCreateZetkinPersonByZammadUser(customer)
+  const data = await getRelevantZammadDataFromZetkinUser(matchingZetkinMember)
+  if (!data) return
+  const zammadUpdateResult = await updateZammadUser(
+    customer.id,
+    data
+  )
+  res.status(204).send()
 }
 
 export const getTicketIdFromWebhookText = (text: string): number | null => {
@@ -117,29 +113,10 @@ export const getTicketIdFromWebhookText = (text: string): number | null => {
   return ticketId
 }
 
-export const parseZammadWebhookBody = async (body: { payload: ZammadWebhook }): Promise<{
-  ticket?: ZammadTicket
-  owner?: ZammadUser
-  customer?: ZammadUser
-}> => {
-  try {
-    const webhook = JSON.parse(body.payload as any)
-    const ticketId = getTicketIdFromWebhookText(webhook?.attachments[0]?.text)
-    if (!ticketId) throw new Error("Couldn't identify ticket in this webhook")
-
-    const ticket = await zammad.get<ZammadTicket>(['tickets', ticketId])
-    const customer = await zammad.get<ZammadUser>(['users', ticket.customer_id])
-    const owner = await zammad.get<ZammadUser>(['users', ticket.owner_id])
-
-    return {
-      ticket,
-      customer,
-      owner
-    }
-  } catch(e) {
-    console.error(e)
-    return {}
-  }
+export const parseZammadWebhookBody = async (body: { payload: ZammadWebhook } | any) => {
+  const webhook = JSON.parse(body.payload as any)
+  const ticketId = getTicketIdFromWebhookText(webhook?.attachments[0]?.text)
+  return { ticketId }
 }
 
 export interface ZammadWebhook {
@@ -254,7 +231,9 @@ export interface ZammadUser {
   created_by_id:                number;
   created_at:                   Date;
   updated_at:                   Date;
-  number:                       string | null;
+  zetkin_member_number:         string | null;
+  gocardless_customer_number:   string | null;
+  zetkin_url: string | null;
   gocardless_url: string | null
   gocardless_status: string | null
   gocardless_subscription: string | null
