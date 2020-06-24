@@ -134,7 +134,7 @@ import { getValidTokens, aggressivelyRetry } from './auth';
 import { spoofLogin, spoofUpgrade } from './spoof';
 import { wait } from '../utils';
 import { DevServer } from '../dev';
-import { createZetkinMember, deleteZetkinMember, updateZetkinMemberCustomFields, findZetkinMemberByFilters, findZetkinMemberByQuery, getZetkinMemberById } from './zetkin';
+import { createZetkinMember, deleteZetkinMember, updateZetkinMemberCustomFields, findZetkinMemberByFilters, findZetkinMemberByQuery, getZetkinMemberById, formatZetkinFields } from './zetkin';
 const devServer = new DevServer()
 
 describe('Zetkin authenticator', async function () {
@@ -166,24 +166,43 @@ describe('Zetkin authenticator', async function () {
   })
 })
 
+const fixtures = {
+  invalidMember: {
+    first_name: "TEST",
+    last_name: "TEST",
+    email: "TEST@TESt.TEST",
+    phone: "077041000" // missing digits
+  },
+  member: {
+    first_name: "TEST",
+    last_name: "TEST",
+    email: "TEST@TESt.TEST",
+    phone: "7704-100 000"
+  },
+  customFields: {
+    gocardless_id: 1,
+    gocardless_url: "https://commonknowledge.coop"
+  },
+  deleteCustomFields: {}
+}
+Object.keys(fixtures.customFields).forEach(key => fixtures.deleteCustomFields[key] = null)
+
+let memberId: number
+
+describe('Zetkin utils', () => {
+  it ('Should reject phone numbers that are invalid', async function () {
+    expect(
+      () => formatZetkinFields(fixtures.invalidMember)
+    ).toThrowError('Invalid phone number')
+  })
+
+  it ('Should format data correctly before creating members', async function () {
+    const fields = formatZetkinFields(fixtures.member)
+    expect(fields.phone).toEqual('+447704100000')
+  })
+})
+
 describe('Zetkin CRUD operations', function () {
-  const fixtures = {
-    member: {
-      first_name: "TEST",
-      last_name: "TEST",
-      email: "TEST@TESt.TEST",
-      phone: "07704100000"
-    },
-    customFields: {
-      gocardless_id: 1,
-      gocardless_url: "https://commonknowledge.coop"
-    },
-    deleteCustomFields: {}
-  }
-  Object.keys(fixtures.customFields).forEach(key => fixtures.deleteCustomFields[key] = null)
-
-  let memberId: number
-
   before(async function() { 
     this.timeout(60000)
     await devServer.setup()

@@ -67,7 +67,8 @@ export const findZetkinMemberByQuery = async (q: string): Promise<ZetkinMemberGe
 type PersonFilterParam = 'email' | 'phone' | 'first_name' | 'last_name'
 type FilterOperator = '==' | '>' | '>=' | '<' | '<=' | '!=' | '*='
 type FilterValue = (string|number|boolean)
-export const findZetkinMemberByFilters = async (filters: Array<[PersonFilterParam, FilterOperator, FilterValue]>, p: number | null = null, pp: number | null = null): Promise<ZetkinMemberGet[] | null> => {
+export type ZetkinFilter = [PersonFilterParam, FilterOperator, FilterValue]
+export const findZetkinMemberByFilters = async (filters: Array<ZetkinFilter>, p: number | null = null, pp: number | null = null): Promise<ZetkinMemberGet[] | null> => {
   const validFilters = filters.filter(f => f[2] !== undefined && f[2] !== null && f[2] !== '')
   if (validFilters.length === 0) return []
   const data = await aggressivelyRetry(async (client) =>
@@ -78,10 +79,25 @@ export const findZetkinMemberByFilters = async (filters: Array<[PersonFilterPara
   return data?.data?.data
 }
 
+import Phone from 'awesome-phonenumber';
+export const formatZetkinFields = <T extends Partial<ZetkinMemberPost>>(fields: T): T => {
+  let { phone, ...data } = fields
+  if (phone) {
+    const phoneObject = new Phone(phone, 'GB')
+    if (!phoneObject.isValid()) {
+      throw new Error('Invalid phone number')
+    }
+    phone = phoneObject.getNumber('international').replace(/\s/mgi, '')
+  }
+  return { phone, ...data } as T
+}
+
 export const createZetkinMember = async (
   data: Partial<ZetkinMemberPost>
 ): Promise<ZetkinMemberGet | null> => {
-  const { customFields, ...fields } = data
+  let { customFields, ...fields } = data
+
+  fields = formatZetkinFields(fields)
   const member: ZetkinMemberGet = (
     await aggressivelyRetry(async (client) =>
       client.resource('orgs', process.env.ZETKIN_ORG_ID, 'people').post(fields)
