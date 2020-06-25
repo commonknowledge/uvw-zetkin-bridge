@@ -21,6 +21,7 @@ export type ZetkinMemberData = {
   customFields?: {
     [key: string]: any
   }
+  tags?: number[]
 }
 
 export type ZetkinMemberPost = ZetkinMemberData & Partial<ZetkinMemberMetadata>
@@ -136,7 +137,7 @@ export const formatZetkinFields = <T extends Partial<ZetkinMemberPost>>(fields: 
 export const createZetkinMember = async (
   data: Partial<ZetkinMemberPost>
 ): Promise<ZetkinMemberGet | null> => {
-  let { customFields, ...fields } = data
+  let { customFields, tags, ...fields } = data
 
   fields = formatZetkinFields(fields)
 
@@ -164,6 +165,9 @@ export const createZetkinMember = async (
   if (customFields && Object.keys(customFields).length > 0) {
     await updateZetkinMemberCustomFields(member.id, customFields)
   }
+  if (tags && tags.length > 0) {
+    await addZetkinMemberTags(member.id, tags)
+  }
   // @ts-ignore
   return member
 }
@@ -179,7 +183,7 @@ export const deleteZetkinMember = async (personId: number) => {
 
 export const updateZetkinMember = async (
   personId: ZetkinMemberPost['id'],
-  { customFields, ...fields }: Partial<ZetkinMemberPost>
+  { customFields, tags, ...fields }: Partial<ZetkinMemberPost>
 ): Promise<ZetkinMemberGet | null> => {
   const member: ZetkinMemberGet = (await aggressivelyRetry(async (client) =>
     client
@@ -188,6 +192,9 @@ export const updateZetkinMember = async (
   ))?.data?.data
   if (customFields && Object.keys(customFields).length > 0) {
     await updateZetkinMemberCustomFields(personId, customFields)
+  }
+  if (tags && tags.length > 0) {
+    await addZetkinMemberTags(personId, tags)
   }
   // @ts-ignore
   return member
@@ -214,23 +221,43 @@ export const updateZetkinMemberCustomFields = async (personId: number, customFie
   return responses
 } 
 
-type Tag = {
+export type Tag = {
   "description"?: string,
   "hidden": boolean,
   "id": number,
   "title": string,
 }
 
+const tagCache: { [tagName: string]: Tag } = {}
+
+const getFromCache = (tagName: string): Tag | undefined => {
+  return tagCache[tagName]
+} 
+
 export const getOrCreateZetkinTag = async (title: string, description?: string, hidden = false) => {
+  const tag = await getZetkinTagByTitle(title)
+  if (tag) return tag
+  return createZetkinTag(title, description, hidden)
+}
+
+export const getZetkinTagByTitle = async (title: string): Promise<Tag | undefined> => {
+  let tag: Tag = getFromCache(title)
+
+  if (tag) return tag
+
+  // If not, load up all the tags
   const tags: Tag[] = (await aggressivelyRetry(async client => {
     return client
       .resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'tags')
       .get()
   }))?.data?.data
 
-  const tag = tags.find(t => t.title === title)
-  if (tag) return tag
+  tag = tags.find(t => t.title === title)
 
+  if (tag) return tag
+}
+
+export const createZetkinTag = async (title: string, description?: string, hidden = false) => {
   return (await aggressivelyRetry(async client => {
     return client
       .resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'tags')
@@ -242,7 +269,8 @@ export const getOrCreateZetkinTag = async (title: string, description?: string, 
   }))?.data?.data as Tag
 }
 
-export const addZetkinMemberTags = async (personId: (string|number), tags: number[]) => {
+export const addZetkinMemberTags = async (personId: (string|number), tagOrTags: number | number[]) => {
+  const tags = Array.isArray(tagOrTags) ? tagOrTags : [tagOrTags]
   try {
     await Promise.all(tags.map(async tag => {
       return aggressivelyRetry(async client => {
