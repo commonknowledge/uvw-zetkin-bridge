@@ -240,9 +240,10 @@ export const getOrCreateZetkinTag = async (title: string, description?: string, 
   return createZetkinTag(title, description, hidden)
 }
 
-export const getZetkinTagByTitle = async (title: string): Promise<Tag | undefined> => {
-  let tag: Tag = getFromCache(title)
+export const serialiseTagTitle = (title: string) => title.replace(/[\(\)£,]+/g, '')
 
+export const getZetkinTagByTitle = async (ttl: string): Promise<Tag | null> => {
+  const title = serialiseTagTitle(ttl)
   if (tag) return tag
 
   // If not, load up all the tags
@@ -254,10 +255,11 @@ export const getZetkinTagByTitle = async (title: string): Promise<Tag | undefine
 
   tag = tags.find(t => t.title === title)
 
-  if (tag) return tag
+  return tags?.find(t => serialiseTagTitle(t.title) === serialiseTagTitle(title))
 }
 
-export const createZetkinTag = async (title: string, description?: string, hidden = false) => {
+export const createZetkinTag = async (ttl: string, description?: string, hidden = false) => {
+  const title = serialiseTagTitle(ttl)
   return (await aggressivelyRetry(async client => {
     return client
       .resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'tags')

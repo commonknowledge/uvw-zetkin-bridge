@@ -1,6 +1,6 @@
 import GoCardless from 'gocardless-nodejs';
 import { getLinked, getRelevantZetkinDataFromGoCardlessCustomer } from './gocardless';
-import { updateZetkinMember, ZetkinMemberGet, addZetkinNoteToMember, upsertZetkinPerson, findZetkinMemberByQuery, findZetkinMemberByFilters, updateZetkinMemberCustomFields, findZetkinMemberByProperties, ZetkinMemberPost, getOrCreateZetkinTag } from '../zetkin/zetkin';
+import { updateZetkinMember, ZetkinMemberGet, addZetkinNoteToMember, upsertZetkinPerson, findZetkinMemberByQuery, findZetkinMemberByFilters, updateZetkinMemberCustomFields, findZetkinMemberByProperties, ZetkinMemberPost, getOrCreateZetkinTag, Tag } from '../zetkin/zetkin';
 import Phone from 'awesome-phonenumber'
 import { TAGS } from '../zetkin/configure';
 
@@ -12,11 +12,15 @@ export const getInterestingEvents = (events: GoCardless.Event[]) => {
 
 export const mapGoCardlessCustomerToZetkinMember = async (customer: GoCardless.Customer): Promise<ZetkinMemberPost> => {
   const customFields = await getRelevantZetkinDataFromGoCardlessCustomer(customer.id)
+
   const tags = await Promise.all([
-    getOrCreateZetkinTag(TAGS.CREATED_BY_GOCARDLESS),
-    getOrCreateZetkinTag(`Subscription status: ${customFields.gocardless_status}`),
-    getOrCreateZetkinTag(`Subscription: ${customFields.gocardless_subscription_name}`)
-  ])
+    TAGS.CREATED_BY_GOCARDLESS,
+    `Subscription status: ${customFields.gocardless_status}`,
+    `Subscription: ${customFields.gocardless_subscription_name.replace(/[\(\)£,]+/g, '')}`
+  ].map(async title => {
+    return getOrCreateZetkinTag(title)
+  }))
+
   return {
     first_name: customer.given_name,
     last_name: customer.family_name,

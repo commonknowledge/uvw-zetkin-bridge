@@ -1,7 +1,7 @@
 import expect from 'expect'
 import { aggressivelyRetry } from './auth';
 import { DevServer } from '../dev';
-import { createZetkinMember, deleteZetkinMember, updateZetkinMemberCustomFields, findZetkinMemberByFilters, findZetkinMemberByQuery, getZetkinMemberById, formatZetkinFields, getZetkinCustomData, addZetkinMemberTags, getZetkinMemberTags, removeZetkinMemberTags, getOrCreateZetkinTag, createZetkinTag, getZetkinTagByTitle } from './zetkin';
+import { createZetkinMember, deleteZetkinMember, updateZetkinMemberCustomFields, findZetkinMemberByFilters, findZetkinMemberByQuery, getZetkinMemberById, formatZetkinFields, getZetkinCustomData, addZetkinMemberTags, getZetkinMemberTags, removeZetkinMemberTags, getOrCreateZetkinTag, createZetkinTag, getZetkinTagByTitle, serialiseTagTitle } from './zetkin';
 import { expectedCustomFields, expectedTags } from './configure';
 const devServer = new DevServer()
 
@@ -166,10 +166,11 @@ describe('Zetkin CRUD operations', function () {
   it ('Create a new tag', async function () {
     this.timeout(60000)
     if (!memberId) throw new Error('Badly setup test')
-    const title = "Some Random Tag Name" + Math.random()
+    // £,() are invalid characters
+    const title = "Some Random Tag Name £,()" + Math.random()
     const tag = await createZetkinTag(title)
     expect(tag).toBeDefined()
-    expect(tag.title).toEqual(title)
+    expect(tag.title).toEqual(serialiseTagTitle(title))
     // Then delete it
     await aggressivelyRetry(client =>
       client.resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'tags', tag.id).del()
