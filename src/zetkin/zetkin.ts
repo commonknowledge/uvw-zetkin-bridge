@@ -228,10 +228,11 @@ export type Tag = {
   "title": string,
 }
 
-const tagCache: { [tagName: string]: Tag } = {}
+let tagCache: { [tagName: string]: Tag } = {}
 
-const getFromCache = (tagName: string): Tag | undefined => {
-  return tagCache[tagName]
+const getFromCache = async (ttl: string): Promise<Tag | undefined> => {
+  const title = serialiseTagTitle(ttl)
+  return tagCache[title]
 } 
 
 export const getOrCreateZetkinTag = async (title: string, description?: string, hidden = false) => {
@@ -244,16 +245,29 @@ export const serialiseTagTitle = (title: string) => title.replace(/[\(\)£,]+/g,
 
 export const getZetkinTagByTitle = async (ttl: string): Promise<Tag | null> => {
   const title = serialiseTagTitle(ttl)
+  let tag: Tag = await getFromCache(title)
+
   if (tag) return tag
 
   // If not, load up all the tags
   const tags: Tag[] = (await aggressivelyRetry(async client => {
-    return client
-      .resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'tags')
-      .get()
+    try {
+      return client
+        .resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'tags')
+        .get()
+    } catch (e) {
+      console.log("Get tags", e)
+      console.error(e)
+    }
   }))?.data?.data
 
-  tag = tags.find(t => t.title === title)
+  if (tags) {
+    // Save to cache
+    tagCache = tags.reduce((dict, tag) => {
+      dict[serialiseTagTitle(tag.title)] = tag
+      return dict
+    }, {})
+  }
 
   return tags?.find(t => serialiseTagTitle(t.title) === serialiseTagTitle(title))
 }
