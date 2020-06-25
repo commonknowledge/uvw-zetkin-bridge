@@ -64,7 +64,7 @@ const webhookRequest = {
 
 const devServer = new DevServer()
 
-describe('Gocardless webhook receiver', () => {
+describe('GoCardless webhook receiver', () => {
   beforeEach(async function() { 
     this.timeout(10000)
     await devServer.setup()

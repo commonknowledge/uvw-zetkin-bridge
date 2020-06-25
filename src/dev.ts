@@ -30,16 +30,11 @@ export class DevServer {
     this.config.ngrokURL = await ngrok.connect(this.config.ngrokConfig);
   }
 
-  async setupDb () {
+  async setupDb (access_token: string = process.env.ZETKIN_ACCESS_TOKEN) {
     await db.migrate.latest({
       directory: path.join(__dirname, '../migrations'),
     });
-  }
 
-  async setup(access_token: string = process.env.ZETKIN_ACCESS_TOKEN) {
-    await this.setupDb()
-    await this.setupServer()
-    await this.setupProxy()
     if (access_token) {
       const expiryDate = new Date(Date.now() + 10000000000)
       await db.table('tokens').insert({
@@ -49,13 +44,23 @@ export class DevServer {
         token_type: 'bearer'
       })
       const token = await getValidToken()
-      const client = await getZetkinInstance(token)
+      await getZetkinInstance(token)
     }
+  }
+
+  async setup(access_token: string = process.env.ZETKIN_ACCESS_TOKEN) {
+    try {
+      await this.teardown()
+    } catch (e) {
+      console.log("Prelim teardown logs", e)
+    }
+    await this.setupDb(access_token)
+    await this.setupServer()
+    await this.setupProxy()
   }
 
   async teardownServer () {
     await this.config.server.close()
-
   }
 
   async teardownProxy () {

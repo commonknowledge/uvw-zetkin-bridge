@@ -7,13 +7,13 @@ import { gocardless } from './gocardless';
 const devServer = new DevServer()
 
 describe('GoCardless batch process', () => {
-  beforeEach(async function() { 
+  before(async function() { 
     this.timeout(10000)
-    await devServer.setup()
+    await devServer.setupDb()
   })
 
-  afterEach(async function() {
-    await devServer.teardown()
+  after(async function() {
+    await devServer.teardownDb()
   })
 
   it('Matches all gocardless customers to zetkin people', async function () {

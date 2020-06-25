@@ -4,7 +4,7 @@ import { ZetkinMemberGet, updateZetkinMemberCustomFields } from '../zetkin/zetki
 import { getOrCreateZetkinPersonByGoCardlessCustomer } from './zetkin-sync';
 // For each GoCardless customer, match to Zetkin member and update custom fields.
 
-export const syncGoCardlessCustomersToZetkin = async (limit?: number, customers?: GoCardless.Customer[]) => {
+export const syncGoCardlessCustomersToZetkin = async (limit: number = 1, customers?: GoCardless.Customer[]) => {
   // Get GoCardless customers
   // @ts-ignore
   const matches: Array<{
