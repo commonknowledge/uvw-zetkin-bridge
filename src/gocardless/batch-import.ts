@@ -9,8 +9,7 @@ export const syncGoCardlessCustomersToZetkin = async (limit?: number, customers?
   // @ts-ignore
   const matches: Array<{
     customer: GoCardless.Customer,
-    zetkinMember: ZetkinMemberGet,
-    customFields: { [key:string]: (string|false) }
+    zetkinMember: ZetkinMemberGet
   }> = []
   if (!customers) {
     const customerList = await gocardless.customers.list({ limit } as any)
@@ -20,8 +19,7 @@ export const syncGoCardlessCustomersToZetkin = async (limit?: number, customers?
   for (const customer of customers) {
     try {
       const zetkinMember = await getOrCreateZetkinPersonByGoCardlessCustomer(customer)
-      const customFields = await updateZetkinMemberCustomFields(zetkinMember.id, await getRelevantZetkinDataFromGoCardlessCustomer(customer.id))
-      matches.push({ customer, zetkinMember, customFields })
+      matches.push({ customer, zetkinMember })
     } catch (e) {
       console.error(e)
     }
