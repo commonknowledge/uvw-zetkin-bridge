@@ -5,7 +5,8 @@ import GoCardless from 'gocardless-nodejs';
 import { DevServer } from '../dev';
 import { getRelevantZetkinDataFromGoCardlessCustomer, gocardless, dateFormat, getCustomerUrl } from './gocardless';
 import { getZetkinPersonByGoCardlessCustomer, getOrCreateZetkinPersonByGoCardlessCustomer, mapGoCardlessCustomerToZetkinMember } from './zetkin-sync';
-import { getZetkinCustomData } from '../zetkin/zetkin';
+import { getZetkinCustomData, getZetkinMemberTags, getOrCreateZetkinTag } from '../zetkin/zetkin';
+import { TAGS } from '../zetkin/configure';
 
 const webhookRequest = {
   body: {
@@ -128,7 +129,7 @@ describe('Gocardless webhook receiver', () => {
     for (let customer of customers) {
       const member = await getOrCreateZetkinPersonByGoCardlessCustomer(customer)
       console.log(member.id)
-      const { customFields, ...memberFields } = await mapGoCardlessCustomerToZetkinMember(customer)
+      const { customFields, tags, ...memberFields } = await mapGoCardlessCustomerToZetkinMember(customer)
       expect(Object.values(member)).toEqual(expect.arrayContaining(Object.values(memberFields).filter(Boolean)))
       const actualCustomFields = await getZetkinCustomData(member.id)
       expect(
@@ -140,6 +141,8 @@ describe('Gocardless webhook receiver', () => {
             .map(String)
           )
       )
+      const actualTags = await getZetkinMemberTags(member.id)
+      expect(actualTags.map(t => t.id)).toEqual(expect.arrayContaining(tags))
     }
   })
 })

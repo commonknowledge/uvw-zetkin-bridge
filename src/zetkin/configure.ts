@@ -145,9 +145,14 @@ export const createFields = async () => {
   )
 }
 
+export const TAGS = {
+  CREATED_BY_GOCARDLESS: 'Created by: GoCardless',
+  CREATED_BY_ZAMMAD: 'Created by: Zammad'
+}
+
 export const expectedTags = [
-  'Created by: GoCardless',
-  'Created by: Zammad',
+  TAGS.CREATED_BY_GOCARDLESS,
+  TAGS.CREATED_BY_ZAMMAD,
   'Pay status: pending_customer_approval',
   'Pay status: customer_approval_denied',
   'Pay status: active',

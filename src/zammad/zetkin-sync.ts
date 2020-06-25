@@ -1,5 +1,6 @@
 import { ZammadUser, ZammadTicket, updateZammadUser } from './zammad';
-import { ZetkinMemberGet, updateZetkinMember, findZetkinMemberByFilters, createZetkinMember, getZetkinCustomData, addZetkinNoteToMember, getZetkinMemberById, ZetkinFilter, findZetkinMemberByProperties, ZetkinMemberPost } from '../zetkin/zetkin';
+import { ZetkinMemberGet, updateZetkinMember, findZetkinMemberByFilters, createZetkinMember, getZetkinCustomData, addZetkinNoteToMember, getZetkinMemberById, ZetkinFilter, findZetkinMemberByProperties, ZetkinMemberPost, getOrCreateZetkinTag } from '../zetkin/zetkin';
+import { TAGS } from '../zetkin/configure';
 
 export const createZetkinPersonByZammadUser = async (
   customer: MinimumRequiredZammadUserForZetkin
@@ -69,6 +70,9 @@ export const getZetkinPersonByZammadCustomer = async (customer: Partial<ZammadUs
 }
 
 export const mapZammadCustomerToZetkinMember = async (customer: MinimumRequiredZammadUserForZetkin): Promise<ZetkinMemberPost> => {
+  const tags = await Promise.all([
+    getOrCreateZetkinTag(TAGS.CREATED_BY_ZAMMAD)
+  ])
   return {
     id: customer.zetkin_member_number as any,
     first_name: customer.firstname,
@@ -80,7 +84,8 @@ export const mapZammadCustomerToZetkinMember = async (customer: MinimumRequiredZ
       origin: 'Zammad Case',
       zammad_id: customer.id,
       zammad_url: new URL(`/#user/profile/${customer.id}`, process.env.ZAMMAD_BASE_URL)
-    }
+    },
+    tags: tags.map(t => t.id)
   }
 }
 
