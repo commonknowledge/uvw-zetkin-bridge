@@ -79,13 +79,12 @@ export const getZetkinInstance = async (token?: Token) => {
  * @param args 
  */
 export const aggressivelyRetry = async (query: (client: { resource: any }) => any, maxRetries = 5) => {
-  const requestId = uniqueId()
   let mode: 'fail' | 'login' | 'refresh' | 'upgrade' = null
   let reason
   let retryCount = 0
   async function run() {
     retryCount = retryCount + 1
-    // console.trace({ requestId, retryCount, mode, reason, fn: query.toString(), tokens: await getTokens() })
+    // console.trace({ requestId: uniqueId(), retryCount, mode, reason, fn: query.toString(), tokens: await getTokens() })
     if (retryCount > maxRetries) { mode = 'fail' }
     if (mode === 'fail') return
     try {
@@ -96,13 +95,6 @@ export const aggressivelyRetry = async (query: (client: { resource: any }) => an
       }
       return data
     } catch (e) {
-      if (!e.httpStatus || (!!e?.httpStatus && ![401, 403].includes(e.httpStatus))) {
-        // This is not an auth issue!
-        reason = 'Request was invalid'
-        console.error("Request was invalid.")
-        console.error(e)
-        throw new Error(JSON.stringify(e))
-      }
       if (e.toString().includes('Unable to sign without access token')) {
         mode = 'login'
         reason = 'No access token'
@@ -110,6 +102,12 @@ export const aggressivelyRetry = async (query: (client: { resource: any }) => an
         await spoofLogin()
         await wait(1000)
         return await run()
+      } else if (!e.httpStatus || (!!e?.httpStatus && ![401, 403].includes(e.httpStatus))) {
+        // This is not an auth issue!
+        reason = 'Request was invalid'
+        console.error("Request was invalid.")
+        console.error(e)
+        throw new Error(JSON.stringify(e))
       } else if (e.httpStatus === 401) {
         try {
           reason = 'Code 401'
