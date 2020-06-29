@@ -3,7 +3,7 @@ import * as process from "process"
 import * as webhooks from "gocardless-nodejs/webhooks"
 import * as Express from 'express'
 import * as constants from 'gocardless-nodejs/constants'
-import GoCardless from 'gocardless-nodejs'
+import GoCardless, { ListMeta } from 'gocardless-nodejs'
 import { GoCardlessClient } from 'gocardless-nodejs/client'
 import { findZetkinMemberByQuery, ZetkinMemberGet } from '../zetkin/zetkin';
 import { processEvent } from './zetkin-sync';
@@ -165,4 +165,55 @@ export const getRelevantZetkinDataFromGoCardlessCustomer = async (
     number_of_payments,
     first_payment_date,
   }
+}
+
+type ListResponse = {
+  meta: ListMeta;
+}
+
+// export const getGoCardlessPaginatedList = async (
+//   resource: string,
+//   args: {
+//     after?: string;
+//     before?: string;
+//     limit?: string;
+//   }
+// ): Promise<any> => {
+//   const data: T[] = []
+//   let res: ListResponse
+//   let i = 0
+//   while ((res?.meta?.limit || 0) < (args.limit || 50)) {
+//     i++
+//     if (i > 5) throw new Error('Something went wrong')
+//     const nextArgs = { ...args }
+//     const after = res?.meta?.cursors?.after
+//     if (after) {
+//       nextArgs.after = after
+//     }
+//     res = await method.bind(method, nextArgs)
+//     data.push(res[dataField])
+//   }
+//   return data
+// }
+
+export const getGoCardlessPaginatedList = async (
+  resource: string,
+  args: { limit: number, after?: string }
+) => {
+  let data = []
+  let res: ListResponse
+  while (
+    // moreDataRequired
+    data.length < args.limit &&
+    // moreDataAvailable
+    !!res.meta.limit
+  ) {
+    const nextArgs = { ...args }
+    const after = res?.meta?.cursors?.after
+    if (after) nextArgs.after = after
+    res = await gocardless[resource].list(nextArgs)
+    const requiredDataLength = args.limit - data.length
+    data = data.concat(res[resource].slice(0, requiredDataLength))
+  }
+  return data
 }

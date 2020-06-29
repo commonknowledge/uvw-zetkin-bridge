@@ -3,7 +3,7 @@ import supertest from 'supertest'
 import db from "../db"
 import GoCardless from 'gocardless-nodejs';
 import { DevServer } from '../dev';
-import { getRelevantZetkinDataFromGoCardlessCustomer, gocardless, dateFormat, getCustomerUrl } from './gocardless';
+import { getRelevantZetkinDataFromGoCardlessCustomer, gocardless, dateFormat, getCustomerUrl, getGoCardlessPaginatedList } from './gocardless';
 import { getZetkinPersonByGoCardlessCustomer, getOrCreateZetkinPersonByGoCardlessCustomer, mapGoCardlessCustomerToZetkinMember } from './zetkin-sync';
 import { getZetkinCustomData, getZetkinMemberTags, getOrCreateZetkinTag } from '../zetkin/zetkin';
 import { TAGS } from '../zetkin/configure';
@@ -63,6 +63,19 @@ const webhookRequest = {
 }
 
 const devServer = new DevServer()
+
+describe('GoCardless utils', () => {
+  it('Collects up paginated data', async function () {
+    this.timeout(10000)
+    // The pagination cap is 500 so check for more
+    const limit = 501
+    const customers: GoCardless.Customer[] = await getGoCardlessPaginatedList('customers', { limit })
+    expect(customers).toBeInstanceOf(Array)
+    expect(customers).toHaveLength(limit)
+    // Ensure there's no overlap between the pages by checking for unique values
+    expect(Array.from(new Set(customers.map(c => c.id)))).toHaveLength(limit)
+  })
+})
 
 describe('GoCardless webhook receiver', () => {
   beforeEach(async function() { 
