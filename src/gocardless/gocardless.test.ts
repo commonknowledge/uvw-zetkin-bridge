@@ -120,14 +120,14 @@ describe('GoCardless webhook receiver', () => {
     const id = "CU000STHXDH55S"
     const data = await getRelevantZetkinDataFromGoCardlessCustomer(id)
     expect(data).toEqual({
-      gocardless_id: id,
-      gocardless_url: getCustomerUrl(id),
-      gocardless_subscription_name: "UVW membership (gross monthly salary above £1,101)",
-      gocardless_subscription_id: "SB000940CGEJVF",
-      gocardless_status: "active",
       last_payment_date: "2020-06-02",
       first_payment_date: "2020-05-01",
-      number_of_payments: 2
+      gocardless_status: "active",
+      number_of_payments: 2,
+      gocardless_url: getCustomerUrl(id),
+      // gocardless_id: id,
+      gocardless_subscription_name: "UVW membership (gross monthly salary above £1,101)",
+      // gocardless_subscription_id: "SB000940CGEJVF",
     })
   })
 

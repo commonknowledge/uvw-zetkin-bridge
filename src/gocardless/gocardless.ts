@@ -127,7 +127,7 @@ export const getRelevantZetkinDataFromGoCardlessCustomer = async (
     )[0]
   }
   const gocardless_subscription_name = subscription.name
-  const gocardless_subscription_id = subscription.id
+  // const gocardless_subscription_id = subscription.id
   const gocardless_status = subscription.status
 
   if (!payments) {
@@ -156,10 +156,10 @@ export const getRelevantZetkinDataFromGoCardlessCustomer = async (
   const number_of_payments = payments.length
 
   return {
-    gocardless_id: customerId,
+    // gocardless_id: customerId,
     gocardless_url: getCustomerUrl(customerId),
     gocardless_subscription_name,
-    gocardless_subscription_id,
+    // gocardless_subscription_id,
     gocardless_status,
     last_payment_date,
     number_of_payments,

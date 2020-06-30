@@ -49,7 +49,7 @@ export const getRelevantZammadDataFromZetkinUser = async (
     address: zetkinPerson.street_address,
     zetkin_member_number: String(zetkinPerson.id),
     zetkin_url: `http://organize.${process.env.ZETKIN_DOMAIN}/people/person:${String(zetkinPerson.id)}`,
-    gocardless_customer_number: getCustomData('gocardless_id'),
+    // gocardless_customer_number: getCustomData('gocardless_id'),
     gocardless_url: getCustomData('gocardless_url'),
     gocardless_status: getCustomData('gocardless_status'),
     gocardless_subscription: getCustomData('gocardless_subscription_name'),
