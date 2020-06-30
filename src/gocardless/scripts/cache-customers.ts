@@ -64,7 +64,7 @@ const syncCustomersToZammad = async () => {
             person.email || person.phone_number || `${person.given_name} ${person.family_name}`
           ).replace(/\s/mig, ''),
           ...person,
-          mobile: new Phone(person.phone_number, 'GB').getNumber('e164')
+          mobile: person.phone_number ? new Phone(String(person.phone_number), 'GB').getNumber('e164') : undefined
         }
         // Create/update Zammad
         const zammadUser = await upsertZammadUser(newPerson)
