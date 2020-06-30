@@ -28,6 +28,7 @@ export type ZetkinMemberPost = ZetkinMemberData & Partial<ZetkinMemberMetadata>
 
 export type ZetkinMemberGet = ZetkinMemberMetadata & ZetkinMemberData
 
+import Phone from 'awesome-phonenumber'
 export const alternativeNumberFormats = async (inputNumber: string, countryCode: string = 'GB') => {
   const number = new Phone(inputNumber, countryCode)
   const variations = {
@@ -74,12 +75,17 @@ export const findZetkinMemberByProperties = async (member: Partial<ZetkinMemberP
   }
 }
 
-export const upsertZetkinPerson = async (member: ZetkinMemberPost): Promise<ZetkinMemberGet | null> => {
+export const upsertZetkinPerson = async (member: ZetkinMemberPost, updateTest?: (member: ZetkinMemberGet) => Promise<boolean>): Promise<ZetkinMemberGet | null> => {
   try {
     let foundMember = await findZetkinMemberByProperties(member)
     if (!foundMember) throw new Error("Couldn't find member")
-    const updatedMember = await updateZetkinMember(foundMember.id, member)
-    return updatedMember
+    const shouldUpdate = !updateTest || await updateTest(foundMember)
+    if (shouldUpdate) {
+      const updatedMember = await updateZetkinMember(foundMember.id, member)
+      return updatedMember
+    } else {
+      return foundMember
+    }
   } catch (e) {
     // console.error("Couldn't find member, so creating")
     try {
@@ -138,8 +144,6 @@ export const findZetkinMembersByFilters = async (filters: Array<ZetkinFilter>, p
   })
   return filteredData
 }
-
-import Phone from 'awesome-phonenumber';
 
 export const formatZetkinFields = <T extends Partial<ZetkinMemberPost>>(fields: T): T => {
   let { phone, ...data } = fields

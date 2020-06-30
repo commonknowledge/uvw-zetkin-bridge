@@ -1,7 +1,6 @@
 import GoCardless from 'gocardless-nodejs';
 import { getLinked, getRelevantZetkinDataFromGoCardlessCustomer } from './gocardless';
 import { updateZetkinMember, ZetkinMemberGet, addZetkinNoteToMember, upsertZetkinPerson, findZetkinMemberByQuery, findZetkinMembersByFilters, updateZetkinMemberCustomFields, findZetkinMemberByProperties, ZetkinMemberPost, getOrCreateZetkinTag, Tag } from '../zetkin/zetkin';
-import Phone from 'awesome-phonenumber'
 import { TAGS } from '../zetkin/configure';
 
 export const getInterestingEvents = (events: GoCardless.Event[]) => {
@@ -31,7 +30,7 @@ export const mapGoCardlessCustomerToZetkinMember = async (customer: GoCardless.C
     zip_code: customer.postal_code,
     customFields: {
       ...customFields,
-      origin: "GoCardless"
+      // origin: "GoCardless"
     },
     tags: tags.map(t => t.id)
   }
@@ -46,8 +45,8 @@ export const getZetkinPersonByGoCardlessCustomer = async (customer: GoCardless.C
   return member
 }
 
-export const getOrCreateZetkinPersonByGoCardlessCustomer = async (customer: GoCardless.Customer): Promise<ZetkinMemberGet> => {
-  return upsertZetkinPerson(await mapGoCardlessCustomerToZetkinMember(customer))
+export const getOrCreateZetkinPersonByGoCardlessCustomer = async (customer: GoCardless.Customer, updateTest?: (member: ZetkinMemberGet) => Promise<boolean>): Promise<ZetkinMemberGet> => {
+  return upsertZetkinPerson(await mapGoCardlessCustomerToZetkinMember(customer), updateTest)
 }
 
 export const processEvent = async (event: GoCardless.Event) => {

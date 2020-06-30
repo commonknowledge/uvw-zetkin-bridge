@@ -32,7 +32,7 @@ describe('GoCardless batch process', () => {
   })
 
   // it('Run sync on all GoCardless members', async function () {
-  //   this.timeout(1000000000)
+  //   this.timeout(10000000000)
   //   const out = await syncGoCardlessCustomersToZetkin(50000)
   //   console.log(out.map(z => z.zetkinMember.id))
   // })
