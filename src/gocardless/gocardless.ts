@@ -5,7 +5,7 @@ import * as Express from 'express'
 import * as constants from 'gocardless-nodejs/constants'
 import GoCardless, { ListMeta } from 'gocardless-nodejs'
 import { GoCardlessClient } from 'gocardless-nodejs/client'
-import { findZetkinMemberByQuery, ZetkinMemberGet } from '../zetkin/zetkin';
+import { findZetkinMemberByQuery, ZetkinMemberGet, alternativeNumberFormats } from '../zetkin/zetkin';
 import { processEvent } from './zetkin-sync';
 // @ts-ignore
 export const gocardless: GoCardlessClient = GoCardless(process.env.GOCARDLESS_ACCESS_TOKEN, constants.Environments.Live);
@@ -111,6 +111,7 @@ type AllAvailableLinks =
 type linkResourceKey = keyof AllAvailableLinks
 
 import { format } from 'date-fns'
+import db from "../db"
 export const dateFormat = (d: Date): string => format(d, 'yyyy-MM-dd')
 export const getCustomerUrl = (customerId: string) => `https://manage.gocardless.com/customers/${customerId}`
 
@@ -163,7 +164,7 @@ export const getRelevantZetkinDataFromGoCardlessCustomer = async (
     gocardless_status,
     last_payment_date,
     number_of_payments,
-    first_payment_date,
+    first_payment_date
   }
 }
 
@@ -196,11 +197,27 @@ type ListResponse = {
 //   return data
 // }
 
-export const getGoCardlessPaginatedList = async (
+export const findGoCardlessCustomersBy = async (
+  { email, phone_number, ...query }: Partial<GoCardless.Customer>
+) => {
+  const dbquery = db<GoCardless.Customer>('gocardless_customers')
+    .orWhere({ email: email.trim() })
+    .orWhere(function () {
+      const numbers = Object.values(alternativeNumberFormats(phone_number.trim()))
+      console.log(numbers)
+      for (const p of numbers) {
+        this.orWhere({ phone_number: p })
+      }
+    })
+  console.log(dbquery.toString())
+  return await dbquery
+}
+
+export const getGoCardlessPaginatedList = async <T = any>(
   resource: string,
   args: { limit: number, after?: string }
 ) => {
-  let data = []
+  let data: T[] = []
   let res: ListResponse
   while (
     !data.length || (

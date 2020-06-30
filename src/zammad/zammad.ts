@@ -2,9 +2,14 @@ import * as Express from 'express'
 import * as fetch from 'node-fetch'
 import { merge } from 'lodash'
 import * as path from 'path';
-import { getRelevantZammadDataFromZetkinUser, getOrCreateZetkinPersonByZammadUser } from './zetkin-sync';
+import { getRelevantZammadDataFromZetkinUser, getOrCreateZetkinPersonByZammadUser, mapZammadCustomerToZetkinMember } from './zetkin-sync';
+import { getRelevantZetkinDataFromGoCardlessCustomer, findGoCardlessCustomersBy } from '../gocardless/gocardless';
+import db from "../db"
+import * as GoCardless from 'gocardless-nodejs';
+import queryString from 'query-string'
 
 type URLType = fetch.RequestInfo | (string|number)[]
+type RequestOpts = (fetch.RequestInit & { query?: queryString.ParsedQuery<string> })
 
 export class Zammad {
   constructor (
@@ -14,16 +19,21 @@ export class Zammad {
     private version = 1
   ) {}
 
-  async fetch <D = any>(url: URLType, init?: fetch.RequestInit): Promise<D> {
+  async fetch <D = any>(url: URLType, { query, ...init }: RequestOpts = {}): Promise<D> {
     const apiEndpoint = `/api/v${this.version}`
 
-    const endpoint = typeof url === 'string'
-      ? url.includes('http')
-      ? url
-      : new URL(path.join(apiEndpoint, url), this.baseUri)
-      : Array.isArray(url)
-      ? new URL(path.join(apiEndpoint, ...url.map(String)), this.baseUri)
-      : url
+    const endpoint = queryString.stringifyUrl({
+      url: (
+        typeof url === 'string'
+          ? url.includes('http')
+          ? url
+          : new URL(path.join(apiEndpoint, url), this.baseUri)
+          : Array.isArray(url)
+          ? new URL(path.join(apiEndpoint, ...url.map(String)), this.baseUri)
+          : url
+      ).toString(),
+      query
+    })
 
     const options = merge(
       init,
@@ -39,26 +49,27 @@ export class Zammad {
       endpoint,
       options
     )
-    return data.json()
+
+    return await data.json()
   }
 
-  async get <D>(url: URLType, init: fetch.RequestInit = {}) {
+  async get <D>(url: URLType, init: RequestOpts = {}) {
     return this.fetch<D>(url, { ...init, method: 'GET' })
   }
 
-  async post <D>(url: URLType, init: Omit<fetch.RequestInit, 'body'> & { body?: any } = {}) {
+  async post <D>(url: URLType, init: Omit<RequestOpts, 'body'> & { body?: any } = {}) {
     return this.fetch<D>(url, { ...init, body: init?.body ? JSON.stringify(init.body) : undefined, method: 'POST' })
   }
 
-  async patch <D>(url: URLType, init: Omit<fetch.RequestInit, 'body'> & { body?: any } = {}) {
+  async patch <D>(url: URLType, init: Omit<RequestOpts, 'body'> & { body?: any } = {}) {
     return this.fetch<D>(url, { ...init, body: init?.body ? JSON.stringify(init.body) : undefined, method: 'PATCH' })
   }
 
-  async put <D>(url: URLType, init: Omit<fetch.RequestInit, 'body'> & { body?: any } = {}) {
+  async put <D>(url: URLType, init: Omit<RequestOpts, 'body'> & { body?: any } = {}) {
     return this.fetch<D>(url, { ...init, body: init?.body ? JSON.stringify(init.body) : undefined, method: 'PUT' })
   }
 
-  async delete <D>(url: URLType, init: fetch.RequestInit = {}) {
+  async delete <D>(url: URLType, init: RequestOpts = {}) {
     return this.fetch<D>(url, { ...init, method: 'DELETE' })
   }
 }
@@ -69,41 +80,129 @@ export const zammad = new Zammad(
   process.env.ZAMMAD_ADMIN_PASSWORD,
 )
 
+let USER_CACHE: ZammadUser[] = []
+
+setInterval(() => {
+  USER_CACHE = []
+}, 60 * 60 * 1000)
+
+export const searchZammadUsers = async (
+  { email, phone, mobile }: Partial<ZammadUser>
+) => {
+  if (!USER_CACHE || USER_CACHE.length === 0) {
+    console.log('users length - FETCHING -', USER_CACHE.length)
+    // @ts-ignore
+    const res = await zammad.get<ZammadUser[]>(['users'])
+    // console.log("Fetching all users", res)
+    if (Array.isArray(res)) {
+      USER_CACHE = res
+    }
+  }
+  return USER_CACHE.filter(d => {
+    // @ts-ignore
+    if (email) {
+      d.email === email
+    }
+
+    if (phone) {
+      for (const p of []) {
+        if (d.phone === phone || d.mobile === phone) return true
+      }
+    }
+
+    if (mobile) {
+      for (const p of []) {
+        if (d.phone === mobile || d.mobile === mobile) return true
+      }
+    }
+  })
+}
+
+export const createZammadUser = async (body: Partial<ZammadUser>) => {
+  return zammad.post<ZammadUser>('users', { body })
+}
+
 export const updateZammadUser = async (id: any, body: Partial<ZammadUser>) => {
-  return zammad.put(['users', id], { body })
+  return zammad.put<ZammadUser>(['users', id], { body })
+}
+
+export const upsertZammadUser = async (body: Partial<ZammadUser>) => {
+  const data = await searchZammadUsers(body)
+  if (data.length) {
+    console.log('User already exists, so updating instead.', data.length)
+    return await updateZammadUser(data[0].id, body)
+  } else {
+    return await createZammadUser(body)
+  }
+}
+
+export const deleteZammadUser = async (id: any) => {
+  return zammad.delete<ZammadUser>(['users', id])
+}
+
+const sample = ({ email, phone, firstname, lastname, login, id }: Partial<ZammadUser>) => {
+  return JSON.stringify({
+    id,
+    email,
+    phone,
+    firstname,
+    lastname,
+    login,
+  })
 }
 
 export const handleZammadWebhook = async (
   req: Express.Request<any>,
   res: Express.Response<any>
 ) => {
+  console.log("Received Zammad webhook")
   // Respond to Zammad
   if (req.headers["user-agent"] !== 'Zammad User Agent' || !req.body) {
     return res.status(400).send() 
   }
-  console.log("Received Zammad webhook")
 
-  // Attach Zetkin user if necessary
-  const { ticketId } = await parseZammadWebhookBody(req.body)
-  const ticket = await zammad.get<ZammadTicket>(['tickets', ticketId])
-  const customer = await zammad.get<ZammadUser>(['users', ticket?.customer_id])
-  if (!customer) {
-    return
+  try {
+    // Attach Zetkin user if necessary
+    const { ticketId } = await parseZammadWebhookBody(req.body)
+    const ticket = await zammad.get<ZammadTicket>(['tickets', ticketId])
+    const customer = await zammad.get<ZammadUser>(['users', ticket?.customer_id])
+    if (!customer) {
+      return
+    }
+
+    // TODO: Sync data back to Zetkin
+    // if (customer.zetkin_member_number) {
+    //    ...
+    // }
+
+    // const matchingZetkinMember = await getOrCreateZetkinPersonByZammadUser(customer)
+    // const data = await getRelevantZammadDataFromZetkinUser(matchingZetkinMember)
+    // if (!data) return
+
+    let gocardlessCustomerId = customer.gocardless_customer_number
+
+    if (!gocardlessCustomerId) {
+      const gocardlessCustomers = await findGoCardlessCustomersBy({
+        email: customer.email,
+        phone_number: customer.phone,
+      })
+
+      gocardlessCustomerId = gocardlessCustomers?.[0]?.id
+    }
+
+    if (gocardlessCustomerId) {
+      const gocardlessData = await getRelevantZetkinDataFromGoCardlessCustomer(gocardlessCustomerId)
+
+      await updateZammadUser(
+        customer.id,
+        gocardlessData
+      )
+    }
+  } catch (e) {
+
+  } finally {
+    res.status(204).send()
   }
-
-  // TODO: Sync data back to Zetkin
-  // if (customer.zetkin_member_number) {
-  //    ...
-  // }
-
-  const matchingZetkinMember = await getOrCreateZetkinPersonByZammadUser(customer)
-  const data = await getRelevantZammadDataFromZetkinUser(matchingZetkinMember)
-  if (!data) return
-  const zammadUpdateResult = await updateZammadUser(
-    customer.id,
-    data
-  )
-  res.status(204).send()
 }
 
 export const getTicketIdFromWebhookText = (text: string): number | null => {

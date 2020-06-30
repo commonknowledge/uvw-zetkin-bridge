@@ -81,8 +81,8 @@ export const mapZammadCustomerToZetkinMember = async (customer: MinimumRequiredZ
     phone: customer.mobile || customer.phone,
     city: customer.city,
     customFields: {
-      origin: 'Zammad Case',
-      zammad_id: customer.id,
+      // origin: 'Zammad Case',
+      // zammad_id: customer.id,
       zammad_url: new URL(`/#user/profile/${customer.id}`, process.env.ZAMMAD_BASE_URL)
     },
     tags: tags.map(t => t.id)

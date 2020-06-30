@@ -28,6 +28,16 @@ export type ZetkinMemberPost = ZetkinMemberData & Partial<ZetkinMemberMetadata>
 
 export type ZetkinMemberGet = ZetkinMemberMetadata & ZetkinMemberData
 
+export const alternativeNumberFormats = async (inputNumber: string, countryCode: string = 'GB') => {
+  const number = new Phone(inputNumber, countryCode)
+  const variations = {
+      original: number.getNumber().replace(/\s/mgi, ''),
+      local: number.getNumber('national').replace(/\s/mgi, ''),
+      international: number.getNumber('international').replace(/\s/mgi, ''),
+  }
+  return variations
+}
+
 export const findZetkinMemberByProperties = async (member: Partial<ZetkinMemberPost>): Promise<null | ZetkinMemberGet> => {
   let foundMember: ZetkinMemberGet
 
@@ -54,13 +64,7 @@ export const findZetkinMemberByProperties = async (member: Partial<ZetkinMemberP
 
   // Try some variations of the phone number
   if (member.phone) {
-    const number = new Phone(member.phone, 'GB')
-    const variations = {
-        original: number.getNumber().replace(/\s/mgi, ''),
-        local: number.getNumber('national').replace(/\s/mgi, ''),
-        international: number.getNumber('international').replace(/\s/mgi, ''),
-    }
-
+    const variations = alternativeNumberFormats(member.phone)
     for (const phoneVariant of Object.values(variations)) {
       foundMember = (await findZetkinMembersByFilters([
         ['phone', '==', phoneVariant]
