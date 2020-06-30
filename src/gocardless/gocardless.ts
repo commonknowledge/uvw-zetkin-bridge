@@ -30,12 +30,12 @@ export const handleGoCardlessWebhook = async (req: Express.Request<null, null, {
     // Let GoCardless know the webhook has someone to listen to
     res.status(204).send()
     
-    // Continue processing the data
-    console.log(`Received ${req.body.events.length} GoCardless webhook events`)
-    // TODO: Turn this back on
-    // const events = await parseEvents(req.body, req.headers['webhook-signature'] as string)
-    const events = req.body.events
-    await Promise.all(events.map(processEvent))
+    // // Continue processing the data
+    // console.log(`Received ${req.body.events.length} GoCardless webhook events`)
+    // // TODO: Turn this back on
+    // // const events = await parseEvents(req.body, req.headers['webhook-signature'] as string)
+    // const events = req.body.events
+    // await Promise.all(events.map(processEvent))
   } catch (error) {
     console.error(error)
     res.status(400)
