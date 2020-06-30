@@ -1,7 +1,7 @@
 import expect from 'expect'
 import { aggressivelyRetry } from './auth';
 import { DevServer } from '../dev';
-import { createZetkinMember, deleteZetkinMember, updateZetkinMemberCustomFields, findZetkinMemberByFilters, findZetkinMemberByQuery, getZetkinMemberById, formatZetkinFields, getZetkinCustomData, addZetkinMemberTags, getZetkinMemberTags, removeZetkinMemberTags, getOrCreateZetkinTag, createZetkinTag, getZetkinTagByTitle, serialiseTagTitle, findZetkinMemberByProperties } from './zetkin';
+import { createZetkinMember, deleteZetkinMember, updateZetkinMemberCustomFields, findZetkinMembersByFilters, findZetkinMemberByQuery, getZetkinMemberById, formatZetkinFields, getZetkinCustomData, addZetkinMemberTags, getZetkinMemberTags, removeZetkinMemberTags, getOrCreateZetkinTag, createZetkinTag, getZetkinTagByTitle, serialiseTagTitle, findZetkinMemberByProperties } from './zetkin';
 import { expectedCustomFields, expectedTags } from './configure';
 const devServer = new DevServer()
 
@@ -80,7 +80,7 @@ describe('Zetkin CRUD operations', function () {
     this.timeout(60000)
     await devServer.setup()
     // Don't allow the test to be tricked by previous tests!
-    const members = await findZetkinMemberByFilters([
+    const members = await findZetkinMembersByFilters([
       ['email', '==', fixtures.member.email]
     ])
     for (const member of members) {
@@ -125,7 +125,7 @@ describe('Zetkin CRUD operations', function () {
   it ('Find members by a single filter', async function () {
     this.timeout(60000)
     if (!memberId) throw new Error('Badly setup test')
-    const members = await findZetkinMemberByFilters([
+    const members = await findZetkinMembersByFilters([
       ['email', '==', fixtures.member.email]
     ])
     expect(members).toBeInstanceOf(Array)
@@ -223,7 +223,7 @@ describe('Zetkin CRUD operations', function () {
     this.timeout(60000)
     if (!memberId) throw new Error('Badly setup test')
     await deleteZetkinMember(memberId)
-    const members = await findZetkinMemberByFilters([
+    const members = await findZetkinMembersByFilters([
       ['phone', '==', fixtures.member.phone]
     ])
     expect(members.length).toEqual(0)

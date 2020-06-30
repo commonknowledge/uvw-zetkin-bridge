@@ -43,7 +43,7 @@ export const findZetkinMemberByProperties = async (member: Partial<ZetkinMemberP
     // given there can be multiple people with the same name...
     (member.first_name && member.last_name)
   ) {
-    foundMember = (await findZetkinMemberByFilters([
+    foundMember = (await findZetkinMembersByFilters([
       ['email', '==', member.email],
       ['first_name', '==', member.first_name],
       ['last_name', '==', member.last_name]
@@ -62,7 +62,7 @@ export const findZetkinMemberByProperties = async (member: Partial<ZetkinMemberP
     }
 
     for (const phoneVariant of Object.values(variations)) {
-      foundMember = (await findZetkinMemberByFilters([
+      foundMember = (await findZetkinMembersByFilters([
         ['phone', '==', phoneVariant]
       ]))?.[0]
       if (foundMember) return foundMember
@@ -109,7 +109,7 @@ type PersonFilterParam = 'email' | 'phone' | 'first_name' | 'last_name'
 type FilterOperator = '==' | '>' | '>=' | '<' | '<=' | '!=' | '*='
 type FilterValue = (string|number|boolean)
 export type ZetkinFilter = [PersonFilterParam, FilterOperator, FilterValue]
-export const findZetkinMemberByFilters = async (filters: Array<ZetkinFilter>, p: number | null = null, pp: number | null = null): Promise<ZetkinMemberGet[] | null> => {
+export const findZetkinMembersByFilters = async (filters: Array<ZetkinFilter>, p: number | null = null, pp: number | null = null): Promise<ZetkinMemberGet[] | null> => {
   const validFilters = filters.filter(f => f[2] !== undefined && f[2] !== null && f[2] !== '')
   if (validFilters.length === 0) return []
   const data: ZetkinMemberGet[] = (await aggressivelyRetry(async (client) =>

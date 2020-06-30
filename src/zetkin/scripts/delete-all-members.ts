@@ -1,6 +1,6 @@
 // import { aggressivelyRetry } from '../auth';
 // import assert from 'assert';
-// import { ZetkinMemberGet, findZetkinMemberByFilters, findZetkinMemberByProperties } from '../zetkin';
+// import { ZetkinMemberGet, findZetkinMembersByFilters, findZetkinMemberByProperties } from '../zetkin';
 // import { chunk } from 'lodash';
 
 // const ME_ID = 1045

@@ -1,5 +1,5 @@
 import { ZammadUser, ZammadTicket, updateZammadUser } from './zammad';
-import { ZetkinMemberGet, updateZetkinMember, findZetkinMemberByFilters, createZetkinMember, getZetkinCustomData, addZetkinNoteToMember, getZetkinMemberById, ZetkinFilter, findZetkinMemberByProperties, ZetkinMemberPost, getOrCreateZetkinTag } from '../zetkin/zetkin';
+import { ZetkinMemberGet, updateZetkinMember, findZetkinMembersByFilters, createZetkinMember, getZetkinCustomData, addZetkinNoteToMember, getZetkinMemberById, ZetkinFilter, findZetkinMemberByProperties, ZetkinMemberPost, getOrCreateZetkinTag } from '../zetkin/zetkin';
 import { TAGS } from '../zetkin/configure';
 
 export const createZetkinPersonByZammadUser = async (
