@@ -203,17 +203,26 @@ export const getGoCardlessPaginatedList = async (
   let data = []
   let res: ListResponse
   while (
-    // moreDataRequired
-    data.length < args.limit &&
-    // moreDataAvailable
-    !!res.meta.limit
+    !data.length || (
+      // moreDataRequired
+      data.length < args.limit &&
+      // moreDataAvailable
+      res?.meta?.limit !== undefined &&
+      !!res?.meta?.cursors?.after
+    )
   ) {
     const nextArgs = { ...args }
     const after = res?.meta?.cursors?.after
     if (after) nextArgs.after = after
     res = await gocardless[resource].list(nextArgs)
     const requiredDataLength = args.limit - data.length
+    console.log(`Adding ${res[resource].length} to ${data.length} of required ${args?.limit}`)
+    // console.log(new Set(data.map(d => d.id)).size)
     data = data.concat(res[resource].slice(0, requiredDataLength))
+    if (!res?.meta?.cursors?.after) {
+      console.log(`Requested ${args?.limit} but there were only ${data?.length} entries.`)
+      return data
+    }
   }
   return data
 }
