@@ -1,7 +1,7 @@
 import expect from 'expect'
 import { aggressivelyRetry } from './auth';
 import { DevServer } from '../dev';
-import { createZetkinMember, deleteZetkinMember, updateZetkinMemberCustomFields, findZetkinMemberByFilters, findZetkinMemberByQuery, getZetkinMemberById, formatZetkinFields, getZetkinCustomData, addZetkinMemberTags, getZetkinMemberTags, removeZetkinMemberTags, getOrCreateZetkinTag, createZetkinTag, getZetkinTagByTitle, serialiseTagTitle } from './zetkin';
+import { createZetkinMember, deleteZetkinMember, updateZetkinMemberCustomFields, findZetkinMemberByFilters, findZetkinMemberByQuery, getZetkinMemberById, formatZetkinFields, getZetkinCustomData, addZetkinMemberTags, getZetkinMemberTags, removeZetkinMemberTags, getOrCreateZetkinTag, createZetkinTag, getZetkinTagByTitle, serialiseTagTitle, findZetkinMemberByProperties } from './zetkin';
 import { expectedCustomFields, expectedTags } from './configure';
 const devServer = new DevServer()
 
@@ -36,6 +36,15 @@ const fixtures = {
     last_name: "Commonperson",
     email: "sometest@commonknowledge.coop",
     phone: "7704-100 000",
+    customFields: {
+      gocardless_status: "Active"
+    }
+  },
+  similarMember: {
+    first_name: "Sometest",
+    last_name: "Commonperson",
+    email: "sometest@commonknowledge.coop",
+    phone: "7704-100 001", // different
     customFields: {
       gocardless_status: "Active"
     }
@@ -87,6 +96,7 @@ describe('Zetkin CRUD operations', function () {
   it ('Should create a new member', async function () {
     this.timeout(60000)
     const member = await createZetkinMember(fixtures.member)
+    const member2 = await createZetkinMember(fixtures.similarMember)
     memberId = member.id
     const { customFields, ...standardFields } = fixtures.member
     expect(member.first_name).toEqual(standardFields.first_name)
@@ -112,15 +122,30 @@ describe('Zetkin CRUD operations', function () {
   //   expect(members[0].first_name).toEqual(fixtures.member.first_name)
   // })
 
-  it ('Find a member by filter', async function () {
+  it ('Find members by a single filter', async function () {
     this.timeout(60000)
     if (!memberId) throw new Error('Badly setup test')
     const members = await findZetkinMemberByFilters([
       ['email', '==', fixtures.member.email]
     ])
     expect(members).toBeInstanceOf(Array)
-    expect(members.length).toBeGreaterThan(0)
+    expect(members).toHaveLength(2)
     expect(members[0]?.first_name).toEqual(fixtures.member.first_name)
+  })
+
+  it ('Find the right member by multiple properties', async function () {
+    this.timeout(60000)
+    if (!memberId) throw new Error('Badly setup test')
+    const member = await findZetkinMemberByProperties({
+      email: fixtures.member.email,
+      phone: fixtures.member.phone
+    })
+    expect({
+      phone: member?.phone
+    }).toEqual(formatZetkinFields({
+      phone: fixtures.member.phone
+    }))
+    expect(member?.first_name).toEqual(fixtures.member.first_name)
   })
 
   it ('Adds custom field values to a member', async function () {

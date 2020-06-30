@@ -112,12 +112,27 @@ export type ZetkinFilter = [PersonFilterParam, FilterOperator, FilterValue]
 export const findZetkinMemberByFilters = async (filters: Array<ZetkinFilter>, p: number | null = null, pp: number | null = null): Promise<ZetkinMemberGet[] | null> => {
   const validFilters = filters.filter(f => f[2] !== undefined && f[2] !== null && f[2] !== '')
   if (validFilters.length === 0) return []
-  const data = await aggressivelyRetry(async (client) =>
+  const data: ZetkinMemberGet[] = (await aggressivelyRetry(async (client) =>
     await client
       .resource('orgs', process.env.ZETKIN_ORG_ID, 'people')
       .get(p, pp, validFilters)
-  )
-  return data?.data?.data
+  ))?.data?.data || []
+  // Double check this filtering is doing an EVERY
+  const filteredData = data.filter(person => {
+    return filters.every(filter => {
+      const [key, op, query] = filter
+      switch (op) {
+        case '==': return person[key] === query
+        case '>': return person[key] > query
+        case '>=': return person[key] >= query
+        case '<': return person[key] < query
+        case '<=': return person[key] <= query
+        case '!=': return person[key] != query
+        case '*=': return person[key].includes(String(query))
+      }
+    })
+  })
+  return filteredData
 }
 
 import Phone from 'awesome-phonenumber';
