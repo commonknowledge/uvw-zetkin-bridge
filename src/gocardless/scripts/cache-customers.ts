@@ -7,7 +7,12 @@ const saveAllCustomersToDatabase = async () => {
   const customers = await getGoCardlessPaginatedList<GoCardless.Customer>
     ('customers', { limit: 50000 })
 
-  for (const cs of chunk(customers, 250)) {
+  const cached = await db<GoCardless.Customer>('gocardless_customers').select('*')
+  const cachedIds = cached.map(c => c.id)
+
+  const customersToAdd = customers.filter(d => !cachedIds.includes(d.id))
+
+  for (const cs of chunk(customersToAdd, 250)) {
     await db<GoCardless.Customer>('gocardless_customers')
       .insert(cs.map(mapCustomerToDatabase))
   }
