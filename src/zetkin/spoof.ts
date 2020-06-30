@@ -115,6 +115,7 @@ export const spoofUpgrade = async (fn = attemptUpgrade) => new Promise(async res
 
 // As a fallback, just reset the login dedupe lock variable every few minutes
 setInterval(() => {
+  console.log("RESETTING LOGIN LOCKS", { isAttemptingLogin, isAttemptingUpgrade })
   isAttemptingLogin = false
   isAttemptingUpgrade = false
 }, 2 * 60 * 1000)

@@ -83,10 +83,13 @@ export const getZetkinInstance = async (token?: Token) => {
 export const aggressivelyRetry = async (query: (client: { resource: any }) => any, maxRetries = 5) => {
   let mode: 'fail' | 'login' | 'refresh' | 'upgrade' = null
   let reason
+  let lastError
   let retryCount = 0
   async function run() {
     retryCount = retryCount + 1
-    // console.trace({ requestId: uniqueId(), retryCount, mode, reason, fn: query.toString(), tokens: await getTokens() })
+    if (lastError) {
+      console.trace({ requestId: uniqueId(), retryCount, mode, reason, lastError, fn: query.toString(), tokens: await getTokens() })
+    }
     if (retryCount > maxRetries) { mode = 'fail' }
     if (mode === 'fail') return
     try {
@@ -97,9 +100,13 @@ export const aggressivelyRetry = async (query: (client: { resource: any }) => an
       }
       return data
     } catch (e) {
-      if (e.toString().includes('Unable to sign without access token')) {
+      if (
+        e.toString().includes('Unable to sign without access token') ||
+        e.toString().includes('Key has expired, please renew')
+      ) {
         mode = 'login'
         reason = 'No access token'
+        lastError = e
         // console.log('Login')
         await spoofLogin()
         await wait(1000)
@@ -107,12 +114,18 @@ export const aggressivelyRetry = async (query: (client: { resource: any }) => an
       } else if (!e.httpStatus || (!!e?.httpStatus && ![401, 403].includes(e.httpStatus))) {
         // This is not an auth issue!
         reason = 'Request was invalid'
+        lastError = e
         console.error("Request was invalid.")
         console.error(e)
         throw new Error(JSON.stringify(e))
-      } else if (e.httpStatus === 401) {
+      } else if (e?.httpStatus === 401) {
         try {
+          if (e.toString().includes('Key has expired, please renew')) {
+            console.error('🥵')
+            throw new Error("Key has expired, please renew")
+          }
           reason = 'Code 401'
+          lastError = e
           mode = 'refresh'
           // console.log('Refresh')
           await zetkinRefresh()
@@ -127,6 +140,7 @@ export const aggressivelyRetry = async (query: (client: { resource: any }) => an
       } else if (e.httpStatus === 403 && mode !== 'upgrade') {
         mode = 'upgrade'
         reason = 'Code 403'
+        lastError = e
         // console.log("Upgrade")
         await spoofUpgrade()
         await wait(500)
@@ -138,6 +152,7 @@ export const aggressivelyRetry = async (query: (client: { resource: any }) => an
           throw new Error("Could not make request. Failed to upgrade. Maybe the OTP is broken?")
         } else {
           mode = 'fail'
+          lastError = e
         }
         throw new Error('Could not make request. Failed to automatically auth to Zetkin.')
       }
