@@ -1,7 +1,8 @@
 import db from '../db'
 import * as Express from 'express'
 import { Timestamps } from '../db';
-import * as Z from 'zetkin'
+// @ts-ignore
+import Z from './client'
 import ClientOAuth2 from 'client-oauth2'
 import * as url from 'url'
 import * as auth from './express-zetkin-auth';
@@ -20,6 +21,7 @@ export const zetkinAuthOpts = {
       secret: process.env.ZETKIN_CONSUMER_SECRET,
   },
   secret: process.env.ZETKIN_SESSION_SECRET,
+  ssl: process.env.ZETKIN_PROVIDER_PROTOCOL === 'https'
 };
 
 const defaultOpts = {
@@ -36,7 +38,7 @@ const defaultOpts = {
 export const opts = Object.assign({}, defaultOpts, zetkinAuthOpts);
 
 // @ts-ignore
-export const zetkin = Z.construct({
+export let zetkin = new Z({
   clientId: opts.app.id,
   clientSecret: opts.app.secret,
   zetkinDomain: opts.zetkinDomain,

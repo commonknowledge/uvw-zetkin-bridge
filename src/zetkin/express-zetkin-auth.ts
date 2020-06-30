@@ -4,7 +4,7 @@
 
 import * as crypto from 'crypto'
 import * as url from 'url'
-import * as Z from 'zetkin'
+import Z from './client'
 
 
 const defaultOpts = {
@@ -26,7 +26,7 @@ export function initialize(opts = {}) {
     }
 
     return (req, res, next) => {
-        req.z = Z.construct({
+        req.z = new Z({
             clientId: opts.app.id,
             clientSecret: opts.app.secret,
             zetkinDomain: opts.zetkinDomain,
