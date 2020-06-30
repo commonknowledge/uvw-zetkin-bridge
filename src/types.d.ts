@@ -11,7 +11,7 @@ declare global {
       ZETKIN_CLIENT_PROTOCOL: string
       ZETKIN_CLIENT_DOMAIN: string
       ZETKIN_PROVIDER_PROTOCOL: string
-      ZETKIN_ORG_ID: number
+      ZETKIN_ORG_ID: string
       ZETKIN_ADMIN_USERNAME: string
       ZETKIN_ADMIN_PASSWORD: string
       ZETKIN_OTP: string
