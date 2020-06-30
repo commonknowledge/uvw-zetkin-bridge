@@ -12,12 +12,40 @@ const saveAllCustomersToDatabase = async () => {
   const cached = await db<GoCardless.Customer>('gocardless_customers').select('*')
   const cachedIds = cached.map(c => c.id)
 
+  /**
+   * Insert new records
+   */
+
   const customersToAdd = customers.filter(d => !cachedIds.includes(d.id))
 
   for (const cs of chunk(customersToAdd, 250)) {
     await db<GoCardless.Customer>('gocardless_customers')
       .insert(cs.map(mapCustomerToDatabase))
   }
+
+  /**
+   * Update existing records
+   */
+
+  const customersToUpdate = customers.filter(d => cachedIds.includes(d.id))
+
+  // https://stackoverflow.com/a/48069213/1053937
+  await db.transaction(trx => {
+    const queries = [];
+
+    for (const customer of customersToUpdate) {
+      const { id, ...newData } = mapCustomerToDatabase(customer)
+      const query = db<GoCardless.Customer>('gocardless_customers')
+        .update(newData)
+        .where({ id: customer.id })
+        .transacting(trx) // This makes every update be in the same transaction
+      queries.push(query)
+    }
+
+    return Promise.all(queries) // Once every query is written
+        .then(trx.commit) // We try to execute all of them
+        .catch(trx.rollback); // And rollback in case any of them goes wrong
+  });
 
   return customers
 }
