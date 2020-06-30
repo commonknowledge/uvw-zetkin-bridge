@@ -1,6 +1,6 @@
 import GoCardless from 'gocardless-nodejs';
 import { getLinked, getRelevantZetkinDataFromGoCardlessCustomer } from './gocardless';
-import { updateZetkinMember, ZetkinMemberGet, addZetkinNoteToMember, upsertZetkinPerson, findZetkinMemberByQuery, findZetkinMemberByFilters, updateZetkinMemberCustomFields, findZetkinMemberByProperties, ZetkinMemberPost, getOrCreateZetkinTag, Tag } from '../zetkin/zetkin';
+import { updateZetkinMember, ZetkinMemberGet, addZetkinNoteToMember, upsertZetkinPerson, findZetkinMemberByQuery, findZetkinMembersByFilters, updateZetkinMemberCustomFields, findZetkinMemberByProperties, ZetkinMemberPost, getOrCreateZetkinTag, Tag } from '../zetkin/zetkin';
 import Phone from 'awesome-phonenumber'
 import { TAGS } from '../zetkin/configure';
 

@@ -3,7 +3,7 @@ import supertest from 'supertest'
 import db from "../db"
 import GoCardless from 'gocardless-nodejs';
 import { DevServer } from '../dev';
-import { getRelevantZetkinDataFromGoCardlessCustomer, gocardless, dateFormat, getCustomerUrl } from './gocardless';
+import { getRelevantZetkinDataFromGoCardlessCustomer, gocardless, dateFormat, getCustomerUrl, getGoCardlessPaginatedList } from './gocardless';
 import { getZetkinPersonByGoCardlessCustomer, getOrCreateZetkinPersonByGoCardlessCustomer, mapGoCardlessCustomerToZetkinMember } from './zetkin-sync';
 import { getZetkinCustomData, getZetkinMemberTags, getOrCreateZetkinTag } from '../zetkin/zetkin';
 import { TAGS } from '../zetkin/configure';
@@ -64,6 +64,19 @@ const webhookRequest = {
 
 const devServer = new DevServer()
 
+describe('GoCardless utils', () => {
+  it('Collects up paginated data', async function () {
+    this.timeout(10000)
+    // The pagination cap is 500 so check for more
+    const limit = 501
+    const customers: GoCardless.Customer[] = await getGoCardlessPaginatedList('customers', { limit })
+    expect(customers).toBeInstanceOf(Array)
+    expect(customers).toHaveLength(limit)
+    // Ensure there's no overlap between the pages by checking for unique values
+    expect(Array.from(new Set(customers.map(c => c.id)))).toHaveLength(limit)
+  })
+})
+
 describe('GoCardless webhook receiver', () => {
   beforeEach(async function() { 
     this.timeout(10000)
@@ -107,14 +120,14 @@ describe('GoCardless webhook receiver', () => {
     const id = "CU000STHXDH55S"
     const data = await getRelevantZetkinDataFromGoCardlessCustomer(id)
     expect(data).toEqual({
-      gocardless_id: id,
-      gocardless_url: getCustomerUrl(id),
-      gocardless_subscription_name: "UVW membership (gross monthly salary above £1,101)",
-      gocardless_subscription_id: "SB000940CGEJVF",
-      gocardless_status: "active",
       last_payment_date: "2020-06-02",
       first_payment_date: "2020-05-01",
-      number_of_payments: 2
+      gocardless_status: "active",
+      number_of_payments: 2,
+      gocardless_url: getCustomerUrl(id),
+      // gocardless_id: id,
+      gocardless_subscription_name: "UVW membership (gross monthly salary above £1,101)",
+      // gocardless_subscription_id: "SB000940CGEJVF",
     })
   })
 

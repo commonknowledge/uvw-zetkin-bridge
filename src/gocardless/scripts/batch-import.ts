@@ -1,10 +1,13 @@
-import { gocardless, getRelevantZetkinDataFromGoCardlessCustomer } from './gocardless';
+import { getGoCardlessPaginatedList } from '../gocardless';
 import * as GoCardless from 'gocardless-nodejs';
-import { ZetkinMemberGet, updateZetkinMemberCustomFields } from '../zetkin/zetkin';
-import { getOrCreateZetkinPersonByGoCardlessCustomer } from './zetkin-sync';
+import { ZetkinMemberGet } from '../../zetkin/zetkin';
+import { getOrCreateZetkinPersonByGoCardlessCustomer } from '../zetkin-sync';
 // For each GoCardless customer, match to Zetkin member and update custom fields.
 
-export const syncGoCardlessCustomersToZetkin = async (limit: number = 1, customers?: GoCardless.Customer[]) => {
+export const syncGoCardlessCustomersToZetkin = async (
+  limit: number = 1,
+  customers?: GoCardless.Customer[]
+) => {
   // Get GoCardless customers
   // @ts-ignore
   const matches: Array<{
@@ -12,12 +15,13 @@ export const syncGoCardlessCustomersToZetkin = async (limit: number = 1, custome
     zetkinMember: ZetkinMemberGet
   }> = []
   if (!customers) {
-    const customerList = await gocardless.customers.list({ limit } as any)
-    customers = customerList.customers
+    customers = await getGoCardlessPaginatedList('customers', { limit })
   }
+  console.log(`Syncing ${customers.length} to Zetkin`)
   // For each, update or create a Zetkin person record
   for (const customer of customers) {
     try {
+      console.log(`${customers.length - matches.length} of ${customers.length} to go`)
       const zetkinMember = await getOrCreateZetkinPersonByGoCardlessCustomer(customer)
       matches.push({ customer, zetkinMember })
     } catch (e) {
