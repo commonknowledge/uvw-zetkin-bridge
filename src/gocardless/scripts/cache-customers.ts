@@ -52,7 +52,6 @@ const saveAllCustomersToDatabase = async () => {
 
 const syncCustomersToZammad = async () => {
   const unsynced = await db<GoCardless.Customer>('gocardless_customers')
-    .whereNot({ synced_to_zammad: true } as any)
   const synced = []
   
   await Promise.all(chunk(unsynced, Math.ceil(unsynced.length / 3)).map(async (people) => {
