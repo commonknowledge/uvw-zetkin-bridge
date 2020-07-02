@@ -7,6 +7,7 @@ import { getRelevantZetkinDataFromGoCardlessCustomer, findGoCardlessCustomersBy 
 import db from "../db"
 import * as GoCardless from 'gocardless-nodejs';
 import queryString from 'query-string'
+import { alternativeNumberFormats } from '../zetkin/zetkin';
 
 type URLType = fetch.RequestInfo | (string|number)[]
 type RequestOpts = (fetch.RequestInit & { query?: queryString.ParsedQuery<string> })
@@ -84,38 +85,48 @@ let USER_CACHE: ZammadUser[] = []
 
 setInterval(() => {
   USER_CACHE = []
-}, 60 * 60 * 1000)
+}, 9 * 60 * 1000)
+
+export const getAllUsers = async (limit: number = 100000): Promise<ZammadUser[]> => {
+  let d: ZammadUser[] = []
+  let last: ZammadUser[] = []
+  let page = 0
+  do {
+    page++
+    const query = { page: page.toString(), per_page: '500' }
+    last = await zammad.get<ZammadUser[]>('users', { query })
+    d = d.concat(last?.slice(0, limit - d.length) || []) // Top up to limit
+  } while (!!last?.length && last.length > 0 && (limit ? d.length < limit : true))
+  return d
+}
 
 export const searchZammadUsers = async (
-  { email, phone, mobile }: Partial<ZammadUser>
+  query: Partial<ZammadUser>
 ) => {
+  const { email, phone, mobile } = query
   if (!USER_CACHE || USER_CACHE.length === 0) {
-    console.log('users length - FETCHING -', USER_CACHE.length)
     // @ts-ignore
-    const res = await zammad.get<ZammadUser[]>(['users'])
-    // console.log("Fetching all users", res)
-    if (Array.isArray(res)) {
-      USER_CACHE = res
-    }
+    USER_CACHE = await getAllUsers()
   }
-  return USER_CACHE.filter(d => {
-    // @ts-ignore
+  const filtered = USER_CACHE.filter(d => {
     if (email) {
-      d.email === email
+      return d.email === email
     }
 
     if (phone) {
-      for (const p of []) {
-        if (d.phone === phone || d.mobile === phone) return true
-      }
+      const p = alternativeNumberFormats(phone).e164
+      if (alternativeNumberFormats(d.phone).e164 === p || alternativeNumberFormats(d.mobile).e164 === p) return true
     }
 
     if (mobile) {
-      for (const p of []) {
-        if (d.phone === mobile || d.mobile === mobile) return true
-      }
+      const p = alternativeNumberFormats(phone).e164
+      if (alternativeNumberFormats(d.phone).e164 === p || alternativeNumberFormats(d.mobile).e164 === p) return true
     }
+
+    return false
   })
+
+  return filtered
 }
 
 export const createZammadUser = async (body: Partial<ZammadUser>) => {

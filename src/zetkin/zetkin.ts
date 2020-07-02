@@ -29,12 +29,13 @@ export type ZetkinMemberPost = ZetkinMemberData & Partial<ZetkinMemberMetadata>
 export type ZetkinMemberGet = ZetkinMemberMetadata & ZetkinMemberData
 
 import Phone from 'awesome-phonenumber'
-export const alternativeNumberFormats = async (inputNumber: string, countryCode: string = 'GB') => {
+export const alternativeNumberFormats = (inputNumber: string, countryCode: string = 'GB') => {
   const number = new Phone(inputNumber, countryCode)
   const variations = {
-      original: number.getNumber().replace(/\s/mgi, ''),
-      local: number.getNumber('national').replace(/\s/mgi, ''),
-      international: number.getNumber('international').replace(/\s/mgi, ''),
+      e164: number.getNumber('e164')?.replace(/\s/mgi, ''),
+      original: number.getNumber()?.replace(/\s/mgi, ''),
+      local: number.getNumber('national')?.replace(/\s/mgi, ''),
+      international: number.getNumber('international')?.replace(/\s/mgi, ''),
   }
   return variations
 }
