@@ -127,13 +127,17 @@ export const updateZammadUser = async (id: any, body: Partial<ZammadUser>) => {
 }
 
 export const upsertZammadUser = async (body: Partial<ZammadUser>) => {
+  console.log('Upsert data', JSON.stringify(body))
   const data = await searchZammadUsers(body)
+  let res
   if (data.length) {
     console.log('User already exists, so updating instead.', data.length)
-    return await updateZammadUser(data[0].id, body)
+    res = await updateZammadUser(data[0].id, body)
   } else {
-    return await createZammadUser(body)
+    res = await createZammadUser(body)
   }
+  console.log('Final data', JSON.stringify(res))
+  return res
 }
 
 export const deleteZammadUser = async (id: any) => {
