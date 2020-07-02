@@ -125,11 +125,11 @@ export const getRelevantZetkinDataFromGoCardlessCustomer = async (
     const subscriptions = await gocardless.subscriptions.list({ customer: customerId });
     subscription = subscriptions.subscriptions.sort(
       (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
-    )[0]
+    )?.[0]
   }
-  const gocardless_subscription_name = subscription.name
+  const gocardless_subscription_name = subscription?.name || 'No Subscription'
   // const gocardless_subscription_id = subscription.id
-  const gocardless_status = subscription.status
+  const gocardless_status = subscription?.status || 'no_subscription'
 
   if (!payments) {
     const paymentsResponse = await gocardless.payments.list({ customer: customerId })
