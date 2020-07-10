@@ -7,6 +7,7 @@ import { zetkinAuthOpts, validate, zetkinLogin, zetkinLogout, zetkinTokens, zetk
 import { handleGoCardlessWebhook } from './gocardless/gocardless';
 import * as bodyParser from 'body-parser';
 import { handleZammadWebhook } from './zammad/zammad';
+import { handleEnquiryWebhook } from './zammad/enquiry';
 
 export const helloWorld = { hello: 'world' }
 
@@ -44,6 +45,7 @@ export default () => {
 
   app.all('/webhooks/gocardless', handleGoCardlessWebhook)
   app.all('/webhooks/zammad', handleZammadWebhook)
+  app.all('/webhooks/enquiry', handleEnquiryWebhook)
 
   return app
 }
