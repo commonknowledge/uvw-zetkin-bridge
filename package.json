@@ -46,6 +46,7 @@
     "expect": "^26.0.1",
     "express": "^4.17.1",
     "express-zetkin-auth": "^1.3.2",
+    "find-duplicates": "^2.0.3",
     "gocardless-nodejs": "^1.2.0",
     "heroku-ssl-redirect": "^0.0.4",
     "http": "^0.0.1-security",

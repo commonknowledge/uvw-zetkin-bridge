@@ -1651,6 +1651,13 @@ finalhandler@~1.1.2:
     statuses "~1.5.0"
     unpipe "~1.0.0"
 
+find-duplicates@^2.0.3:
+  version "2.0.3"
+  resolved "https://registry.yarnpkg.com/find-duplicates/-/find-duplicates-2.0.3.tgz#0fc72753447283fa2b6eeb05403cae87db1790ef"
+  integrity sha512-+cIduUSydNMXVjCB8SmEHkcbu0NsjA3jjQFHEnMIH0MKO9NiD7P7il6WCtdnctgS4x9+eTnP0kWwsJOvySVqlw==
+  dependencies:
+    fast-deep-equal "^3.1.1"
+
 find-up@3.0.0, find-up@^3.0.0:
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/find-up/-/find-up-3.0.0.tgz#49169f1d7993430646da61ecc5ae355c21c97b73"
