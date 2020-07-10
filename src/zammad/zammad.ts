@@ -51,7 +51,19 @@ export class Zammad {
       options
     )
 
-    return await data.json()
+    const res = await data.text()
+
+    try {
+      const data = JSON.parse(res)
+      if (data?.error !== undefined) {
+        throw new Error(data.error)
+      }
+      return data
+    } catch (e) {
+      console.error('Data', res)
+      console.error('Error', e)
+      throw e
+    }
   }
 
   async get <D>(url: URLType, init: RequestOpts = {}) {
@@ -91,13 +103,18 @@ export const getAllUsers = async (limit: number = 100000): Promise<ZammadUser[]>
   let d: ZammadUser[] = []
   let last: ZammadUser[] = []
   let page = 0
-  do {
-    page++
-    const query = { page: page.toString(), per_page: '500' }
-    last = await zammad.get<ZammadUser[]>('users', { query })
-    d = d.concat(last?.slice(0, limit - d.length) || []) // Top up to limit
-  } while (!!last?.length && last.length > 0 && (limit ? d.length < limit : true))
-  return d
+  try {
+    do {
+      page++
+      const query = { page: page.toString(), per_page: '500' }
+      last = await zammad.get<ZammadUser[]>('users', { query })
+      d = d.concat(last?.slice(0, limit - d.length) || []) // Top up to limit
+    } while (!!last?.length && last.length > 0 && (limit ? d.length < limit : true))
+    return d
+  } catch(e) {
+    console.error(last)
+    throw e
+  }
 }
 
 export const searchZammadUsers = async (
@@ -133,8 +150,8 @@ export const createZammadUser = async (body: Partial<ZammadUser>) => {
   return zammad.post<ZammadUser>('users', { body })
 }
 
-export const updateZammadUser = async (id: any, body: Partial<ZammadUser>) => {
-  return zammad.put<ZammadUser>(['users', id], { body })
+export const updateZammadUser = async (userId: any, { id, ...body }: Partial<ZammadUser>) => {
+  return await zammad.put<ZammadUser>(['users', userId], { body })
 }
 
 export const upsertZammadUser = async (body: Partial<ZammadUser>) => {
@@ -152,7 +169,12 @@ export const upsertZammadUser = async (body: Partial<ZammadUser>) => {
 }
 
 export const deleteZammadUser = async (id: any) => {
-  return zammad.delete<ZammadUser>(['users', id])
+  return await zammad.delete<ZammadUser>(['users', id])
+}
+
+export const deactivateZammadUser = async (id: any) => {
+  // You can't often delete users so just make them inactive instead
+  return await updateZammadUser(id, { active: false })
 }
 
 const sample = ({ email, phone, firstname, lastname, login, id }: Partial<ZammadUser>) => {
