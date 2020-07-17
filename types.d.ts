@@ -22,6 +22,7 @@ declare global {
       ZAMMAD_ADMIN_PASSWORD: string
       NODE_ENV: "production" | "development" | "staging"
       SENTRY_DSN: string
+      ZAMMAD_NEW_TICKET_GROUP_NAME: string
     }
   }
 }

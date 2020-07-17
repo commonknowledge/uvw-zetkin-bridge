@@ -101,7 +101,10 @@ const createTicketFromEnquiry = async (enquiry: EnquiryType): Promise<{
   const { message, ...metadata } = enquiry
 
   const groups = (await zammad.get<{ name: string, id: number }[]>('groups')) || []
-  const group = groups.find(g => g.name === 'Engineers')
+  const group = (process.env.ZAMMAD_NEW_TICKET_GROUP_NAME)
+    ? groups.find(g => g.name === process.env.ZAMMAD_NEW_TICKET_GROUP_NAME)
+    : groups[0]
+
   if (!group) throw new Error("Couldn't find group")
 
   const zammadTicket: ZammadTicketPost = {
