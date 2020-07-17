@@ -40,8 +40,8 @@ export const alternativeNumberFormats = (inputNumber: string, countryCode: strin
   return variations
 }
 
-export const findZetkinMemberByProperties = async (member: Partial<ZetkinMemberPost>): Promise<null | ZetkinMemberGet> => {
-  let foundMember: ZetkinMemberGet
+export const findZetkinMemberByProperties = async (member: Partial<ZetkinMemberPost>): Promise<ZetkinMemberGet | null> => {
+  let foundMember: ZetkinMemberGet | null | undefined
 
   if (member.id) {
     foundMember = await getZetkinMemberById(member.id)
@@ -56,9 +56,9 @@ export const findZetkinMemberByProperties = async (member: Partial<ZetkinMemberP
     (member.first_name && member.last_name)
   ) {
     foundMember = (await findZetkinMembersByFilters([
-      ['email', '==', member.email],
-      ['first_name', '==', member.first_name],
-      ['last_name', '==', member.last_name]
+      ['email', '==', member?.email],
+      ['first_name', '==', member?.first_name],
+      ['last_name', '==', member?.last_name]
     ]))?.[0]
   }
 
@@ -74,9 +74,14 @@ export const findZetkinMemberByProperties = async (member: Partial<ZetkinMemberP
       if (foundMember) return foundMember
     }
   }
+
+  return null
 }
 
-export const upsertZetkinPerson = async (member: ZetkinMemberPost, updateTest?: (member: ZetkinMemberGet) => Promise<boolean>): Promise<ZetkinMemberGet | null> => {
+export const upsertZetkinPerson = async (
+  member: ZetkinMemberPost,
+  updateTest?: (member: ZetkinMemberGet) => Promise<boolean>
+): Promise<ZetkinMemberGet> => {
   try {
     let foundMember = await findZetkinMemberByProperties(member)
     if (!foundMember) throw new Error("Couldn't find member")
@@ -93,6 +98,7 @@ export const upsertZetkinPerson = async (member: ZetkinMemberPost, updateTest?: 
       return await createZetkinMember(member)
     } catch (e) {
       console.error("Couldn't create member", e)
+      throw new Error(e)
     }
   }
 }
@@ -119,9 +125,12 @@ export const findZetkinMemberByQuery = async (q: string): Promise<ZetkinMemberGe
 type PersonFilterParam = 'email' | 'phone' | 'first_name' | 'last_name'
 type FilterOperator = '==' | '>' | '>=' | '<' | '<=' | '!=' | '*='
 type FilterValue = (string|number|boolean)
+export type ZetkinFilterInput = [PersonFilterParam, FilterOperator, FilterValue | undefined | null]
 export type ZetkinFilter = [PersonFilterParam, FilterOperator, FilterValue]
-export const findZetkinMembersByFilters = async (filters: Array<ZetkinFilter>, p: number | null = null, pp: number | null = null): Promise<ZetkinMemberGet[] | null> => {
-  const validFilters = filters.filter(f => f[2] !== undefined && f[2] !== null && f[2] !== '')
+export const findZetkinMembersByFilters = async (filters: Array<ZetkinFilterInput>, p: number | null = null, pp: number | null = null): Promise<ZetkinMemberGet[]> => {
+  const validFilters = filters.filter((el): el is ZetkinFilter => {
+    return el[2] !== undefined && el[2] !== null && el[2] !== ''
+  })
   if (validFilters.length === 0) return []
   const data: ZetkinMemberGet[] = (await aggressivelyRetry(async (client) =>
     await client
@@ -130,7 +139,7 @@ export const findZetkinMembersByFilters = async (filters: Array<ZetkinFilter>, p
   ))?.data?.data || []
   // Double check this filtering is doing an EVERY
   const filteredData = data.filter(person => {
-    return filters.every(filter => {
+    return validFilters.every(filter => {
       const [key, op, query] = filter
       switch (op) {
         case '==': return person[key] === query
@@ -160,7 +169,7 @@ export const formatZetkinFields = <T extends Partial<ZetkinMemberPost>>(fields: 
 
 export const createZetkinMember = async (
   data: Partial<ZetkinMemberPost>
-): Promise<ZetkinMemberGet | null> => {
+): Promise<ZetkinMemberGet> => {
   let { customFields, tags, ...fields } = data
 
   fields = formatZetkinFields(fields)
@@ -206,14 +215,15 @@ export const deleteZetkinMember = async (personId: number) => {
 }
 
 export const updateZetkinMember = async (
-  personId: ZetkinMemberPost['id'],
+  personId: number,
   { customFields, tags, ...fields }: Partial<ZetkinMemberPost>
-): Promise<ZetkinMemberGet | null> => {
+): Promise<ZetkinMemberGet> => {
   const member: ZetkinMemberGet = (await aggressivelyRetry(async (client) =>
     client
       .resource('orgs', process.env.ZETKIN_ORG_ID, 'people', personId)
       .patch(fields)
   ))?.data?.data
+  if (!member) throw new Error("No such member")
   if (customFields && Object.keys(customFields).length > 0) {
     await updateZetkinMemberCustomFields(personId, customFields)
   }
@@ -224,11 +234,11 @@ export const updateZetkinMember = async (
   return member
 }
 
-export const updateZetkinMemberCustomFields = async (personId: number, customFields: object) => {
+export const updateZetkinMemberCustomFields = async <T = any>(personId: number, customFields: T) => {
   const responses: { [key: string]: string | false } = {}
   await Promise.all(Object.keys(customFields).map(async field => {
-    const value = (customFields[field] !== null && customFields[field] !== undefined)
-      ? customFields[field].toString()
+    const value = ((customFields as any)[field] !== null && (customFields as any)[field] !== undefined)
+      ? (customFields as any)[field].toString()
       : null
 
     try {
@@ -269,8 +279,7 @@ export const serialiseTagTitle = (title: string) => title.replace(/[\(\)£,]+/g,
 
 export const getZetkinTagByTitle = async (ttl: string): Promise<Tag | null> => {
   const title = serialiseTagTitle(ttl)
-  let tag: Tag = await getFromCache(title)
-
+  let tag = await getFromCache(title)
   if (tag) return tag
 
   // If not, load up all the tags
@@ -287,13 +296,15 @@ export const getZetkinTagByTitle = async (ttl: string): Promise<Tag | null> => {
 
   if (tags) {
     // Save to cache
-    tagCache = tags.reduce((dict, tag) => {
+    tagCache = tags.reduce<{ [tagTitle: string]: Tag }>((dict, tag) => {
       dict[serialiseTagTitle(tag.title)] = tag
       return dict
     }, {})
+
+    return tags.find(t => serialiseTagTitle(t.title) === serialiseTagTitle(title)) || null
   }
 
-  return tags?.find(t => serialiseTagTitle(t.title) === serialiseTagTitle(title))
+  return null
 }
 
 export const createZetkinTag = async (ttl: string, description?: string, hidden = false) => {

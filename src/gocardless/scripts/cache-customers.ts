@@ -4,12 +4,10 @@ import * as GoCardless from 'gocardless-nodejs';
 import { chunk } from 'lodash';
 import { upsertZammadUser, ZammadUser } from '../../zammad/zammad';
 import Phone from 'awesome-phonenumber';
+import { GoCardlessCustomerCache } from '../../db';
 
-const saveAllCustomersToDatabase = async () => {
-  const customers = await getGoCardlessPaginatedList<GoCardless.Customer>
-    ('customers', { limit: 50000 })
-
-  const cached = await db<GoCardless.Customer>('gocardless_customers').select('*')
+const saveCustomersToDatabase = async (customers: GoCardless.Customer[]) => {
+  const cached = await GoCardlessCustomerCache().select('*')
   const cachedIds = cached.map(c => c.id)
 
   /**
@@ -19,7 +17,7 @@ const saveAllCustomersToDatabase = async () => {
   const customersToAdd = customers.filter(d => !cachedIds.includes(d.id))
 
   for (const cs of chunk(customersToAdd, 250)) {
-    await db<GoCardless.Customer>('gocardless_customers')
+    await GoCardlessCustomerCache()
       .insert(cs.map(mapCustomerToDatabase))
   }
 
@@ -35,7 +33,7 @@ const saveAllCustomersToDatabase = async () => {
 
     for (const customer of customersToUpdate) {
       const { id, ...newData } = mapCustomerToDatabase(customer)
-      const query = db<GoCardless.Customer>('gocardless_customers')
+      const query = GoCardlessCustomerCache()
         .update(newData)
         .where({ id: customer.id })
         .transacting(trx) // This makes every update be in the same transaction
@@ -51,7 +49,7 @@ const saveAllCustomersToDatabase = async () => {
 }
 
 const syncCustomersToZammad = async () => {
-  const unsynced = await db<GoCardless.Customer>('gocardless_customers')
+  const unsynced = await GoCardlessCustomerCache()
   const synced = []
   
   await Promise.all(chunk(unsynced, Math.ceil(unsynced.length / 3)).map(async (people) => {
@@ -81,7 +79,7 @@ const syncCustomersToZammad = async () => {
         // Create/update Zammad
         const zammadUser = await upsertZammadUser(newPerson)
         // Store this in DB
-        await db<GoCardless.Customer>('gocardless_customers')
+        await GoCardlessCustomerCache()
           .update({ synced_to_zammad: true } as any)
           .where({ id })
         synced.push(zammadUser)
@@ -98,7 +96,10 @@ const mapCustomerToDatabase = (c: GoCardless.Customer) => {
 }
 
 (async () => {
-  await saveAllCustomersToDatabase()
+  const customers = await getGoCardlessPaginatedList<GoCardless.Customer>(
+    'customers', { limit: 50000 }
+  )
+  await saveCustomersToDatabase(customers)
   await syncCustomersToZammad()
   process.exit()
 })()

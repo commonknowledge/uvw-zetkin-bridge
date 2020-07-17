@@ -71,23 +71,21 @@ describe('Dev server', function () {
       .toThrow(/ECONNREFUSED/)
   })
 
-  it('Running in test env', () => {
-    expect(process.env.NODE_ENV).toEqual('test')
-  })
-
-  it('Has an sqlite3 client', () => {
-    expect(db.client.config.client).toEqual('sqlite3')
-  })
-  
-  it('Data can be stored and retrieved on a test sqlite3 db', async () => {
-    await db.table('events').insert(webhookRequest.body.events.map(mapEventToRow as any))
-    const events = await db.select<GoCardless.Event[]>('*').from('events')
-    expect(events.length).toEqual(webhookRequest.body.events.length)
-  })
-  
-  it('Teardown should wipe the DB', async () => {
-    await devServer.teardown()
-    const events = await db.select<GoCardless.Event[]>('*').from('events')
-    expect(events).toHaveLength(0)
-  })
+  if (process.env.NODE_ENV === 'test') {
+    it('Has an sqlite3 client', () => {
+      expect(db.client.config.client).toEqual('sqlite3')
+    })
+    
+    it('Data can be stored and retrieved on a test sqlite3 db', async () => {
+      await db.table('events').insert(webhookRequest.body.events.map(mapEventToRow as any))
+      const events = await db.select<GoCardless.Event[]>('*').from('events')
+      expect(events.length).toEqual(webhookRequest.body.events.length)
+    })
+    
+    it('Teardown should wipe the DB', async () => {
+      await devServer.teardown()
+      const events = await db.select<GoCardless.Event[]>('*').from('events')
+      expect(events).toHaveLength(0)
+    })
+  }
 })

@@ -1,6 +1,6 @@
 import expect from 'expect'
 import supertest from 'supertest'
-import { zammad, ZammadUser, ZammadTicket, getTicketIdFromWebhookText, updateZammadUser, parseZammadWebhookBody, searchZammadUsers, getAllUsers } from './zammad';
+import { zammad, ZammadUser, ZammadTicket, getTicketIdFromWebhookText, updateZammadUser, parseZammadWebhookBody, searchZammadUsers, getAllUsersFromZammad } from './zammad';
 import { DevServer } from '../dev';
 import { getRelevantZammadDataFromZetkinUser, getOrCreateZetkinPersonByZammadUser } from './zetkin-sync';
 import { ZammadObjectProperty } from './types';
@@ -64,7 +64,7 @@ describe('Zammad webhook receiver', () => {
 
   // it('Gets all users', async function () {
   //   this.timeout(60000)
-  //   expect((await getAllUsers(501))).toHaveLength(501)
+  //   expect((await getAllUsersFromZammad(501))).toHaveLength(501)
   // })
 
   it('Searches users by email', async function () {
@@ -74,9 +74,36 @@ describe('Zammad webhook receiver', () => {
 
   it('Searches users by phone', async function () {
     this.timeout(60000)
-    expect(await searchZammadUsers({ phone: '‭07727 327927‬' })).toHaveLength(1)
-    expect(await searchZammadUsers({ phone: '‭07727327927‬' })).toHaveLength(1)
-    expect(await searchZammadUsers({ phone: '‭+447727327927‬' })).toHaveLength(1)
+    expect.extend({
+      toBeAround(actual:number, expected:number, precision = 2) {
+        const pass = Math.abs(expected - actual) < Math.pow(10, -precision) / 2;
+        if (pass) {
+          return {
+            message: () => `expected ${actual} not to be around ${expected}`,
+            pass: true
+          };
+        } else {
+          return {
+            message: () => `expected ${actual} to be around ${expected}`,
+            pass: false
+          }
+        }
+      }
+    });
+    // @ts-ignore
+    let res = (await searchZammadUsers({ phone: '‭07727 327927‬' }))
+    expect(res.length).toBeGreaterThanOrEqual(1)
+    expect(res.length).toBeLessThanOrEqual(3)
+    // @ts-ignore
+    res = (await searchZammadUsers({ phone: '‭07727327927‬' }))
+    expect(res.length).toBeGreaterThanOrEqual(1)
+    expect(res.length).toBeGreaterThanOrEqual(1)
+    expect(res.length).toBeLessThanOrEqual(3)
+    // @ts-ignore
+    res = (await searchZammadUsers({ phone: '‭+447727327927‬' }))
+    expect(res.length).toBeGreaterThanOrEqual(1)
+    expect(res.length).toBeGreaterThanOrEqual(1)
+    expect(res.length).toBeLessThanOrEqual(3)
   })
 
   it('No false positives', async function () {

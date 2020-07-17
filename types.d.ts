@@ -1,6 +1,3 @@
-// declare module "gocardless-nodejs"
-declare module "gocardless-nodejs/webhooks"
-
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
@@ -23,6 +20,8 @@ declare global {
       ZAMMAD_BASE_URL: string
       ZAMMAD_ADMIN_USERNAME: string
       ZAMMAD_ADMIN_PASSWORD: string
+      NODE_ENV: "production" | "development" | "staging"
+      SENTRY_DSN: string
     }
   }
 }

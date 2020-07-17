@@ -1,13 +1,23 @@
 import * as Express from 'express'
 import * as fetch from 'node-fetch'
-import { merge } from 'lodash'
+import { merge, chunk } from 'lodash'
 import * as path from 'path';
 import { getRelevantZammadDataFromZetkinUser, getOrCreateZetkinPersonByZammadUser, mapZammadCustomerToZetkinMember } from './zetkin-sync';
 import { getRelevantZetkinDataFromGoCardlessCustomer, findGoCardlessCustomersBy } from '../gocardless/gocardless';
 import db from "../db"
 import * as GoCardless from 'gocardless-nodejs';
-import queryString from 'query-string'
+import * as queryString from 'query-string'
 import { alternativeNumberFormats } from '../zetkin/zetkin';
+import * as Sentry from '@sentry/node';
+import { ZammadUserCacheItem, ZammadUserCache } from '../db';
+
+if (
+  !process.env.ZAMMAD_BASE_URL ||
+  !process.env.ZAMMAD_ADMIN_USERNAME ||
+  !process.env.ZAMMAD_ADMIN_PASSWORD
+) {
+  throw new Error("Missing Zammad environment variables")
+}
 
 type URLType = fetch.RequestInfo | (string|number)[]
 type RequestOpts = (fetch.RequestInit & { query?: queryString.ParsedQuery<string> })
@@ -20,7 +30,7 @@ export class Zammad {
     private version = 1
   ) {}
 
-  async fetch <D = any>(url: URLType, { query, ...init }: RequestOpts = {}): Promise<D> {
+  async fetch <D = any, R = any>(url: URLType, { query, ...init }: RequestOpts = {}): Promise<D | undefined> {
     const apiEndpoint = `/api/v${this.version}`
 
     const endpoint = queryString.stringifyUrl({
@@ -33,7 +43,7 @@ export class Zammad {
           ? new URL(path.join(apiEndpoint, ...url.map(String)), this.baseUri)
           : url
       ).toString(),
-      query
+      query: query || {}
     })
 
     const options = merge(
@@ -46,43 +56,51 @@ export class Zammad {
       }
     )
 
-    const data = await fetch.default(
+    Sentry.addBreadcrumb({
+      category: "httpRequest",
+      message: "Making a request to Zammad",
+      data: { endpoint, ...options }
+    })
+
+    const res = await fetch.default(
       endpoint,
       options
     )
 
-    const res = await data.text()
+    const data = await res.text()
 
     try {
-      const data = JSON.parse(res)
-      if (data?.error !== undefined) {
-        throw new Error(data.error)
+      if (!data) return
+      const payload = JSON.parse(data)
+      if (payload?.error !== undefined) {
+        Sentry.captureException(payload.error)
+        throw new Error(payload.error)
       }
-      return data
+      return payload
     } catch (e) {
-      console.error('Data', res)
-      console.error('Error', e)
+      console.error('ZammadData', data)
+      console.error('ZammadError', e)
       throw e
     }
   }
 
-  async get <D>(url: URLType, init: RequestOpts = {}) {
+  async get <D = any>(url: URLType, init: RequestOpts = {}) {
     return this.fetch<D>(url, { ...init, method: 'GET' })
   }
 
-  async post <D>(url: URLType, init: Omit<RequestOpts, 'body'> & { body?: any } = {}) {
-    return this.fetch<D>(url, { ...init, body: init?.body ? JSON.stringify(init.body) : undefined, method: 'POST' })
+  async post <D = any, R = any>(url: URLType, init: Omit<RequestOpts, 'body'> & { body?: R } = {}) {
+    return this.fetch<D, R>(url, { ...init, body: init?.body ? JSON.stringify(init.body) : undefined, method: 'POST' })
   }
 
-  async patch <D>(url: URLType, init: Omit<RequestOpts, 'body'> & { body?: any } = {}) {
-    return this.fetch<D>(url, { ...init, body: init?.body ? JSON.stringify(init.body) : undefined, method: 'PATCH' })
+  async patch <D = any, R = any>(url: URLType, init: Omit<RequestOpts, 'body'> & { body?: R } = {}) {
+    return this.fetch<D, R>(url, { ...init, body: init?.body ? JSON.stringify(init.body) : undefined, method: 'PATCH' })
   }
 
-  async put <D>(url: URLType, init: Omit<RequestOpts, 'body'> & { body?: any } = {}) {
-    return this.fetch<D>(url, { ...init, body: init?.body ? JSON.stringify(init.body) : undefined, method: 'PUT' })
+  async put <D = any, R = any>(url: URLType, init: Omit<RequestOpts, 'body'> & { body?: R } = {}) {
+    return this.fetch<D, R>(url, { ...init, body: init?.body ? JSON.stringify(init.body) : undefined, method: 'PUT' })
   }
 
-  async delete <D>(url: URLType, init: RequestOpts = {}) {
+  async delete <D = any>(url: URLType, init: RequestOpts = {}) {
     return this.fetch<D>(url, { ...init, method: 'DELETE' })
   }
 }
@@ -93,13 +111,7 @@ export const zammad = new Zammad(
   process.env.ZAMMAD_ADMIN_PASSWORD,
 )
 
-let USER_CACHE: ZammadUser[] = []
-
-setInterval(() => {
-  USER_CACHE = []
-}, 9 * 60 * 1000)
-
-export const getAllUsers = async (limit: number = 100000): Promise<ZammadUser[]> => {
+export const getAllUsersFromZammad = async (limit: number = 100000): Promise<ZammadUser[]> => {
   let d: ZammadUser[] = []
   let last: ZammadUser[] = []
   let page = 0
@@ -107,7 +119,7 @@ export const getAllUsers = async (limit: number = 100000): Promise<ZammadUser[]>
     do {
       page++
       const query = { page: page.toString(), per_page: '500' }
-      last = await zammad.get<ZammadUser[]>('users', { query })
+      last = (await zammad.get<ZammadUser[]>('users', { query })) || []
       d = d.concat(last?.slice(0, limit - d.length) || []) // Top up to limit
     } while (!!last?.length && last.length > 0 && (limit ? d.length < limit : true))
     return d
@@ -117,27 +129,59 @@ export const getAllUsers = async (limit: number = 100000): Promise<ZammadUser[]>
   }
 }
 
+let retries = 0
+
+export const getAllCachedUsers = async () => {
+  let res = await ZammadUserCache().select('*')
+  if (res.length > 0) {
+    console.log(`Zammad cache held ${res.length} entries`)
+    return res.map(r => r.data)
+  }
+
+  console.log("No Zammad users present in database")
+  // while (retries < 1) {
+  //   // It may be that we just deployed
+  //   // So try populating the database
+  //   const users = await getAllUsersFromZammad()
+  //   await saveUsersToDatabase(users)
+  //   if (users.length > 0) {
+  //     return users
+  //   }
+  //   retries++
+  // }
+
+  return []
+}
+
 export const searchZammadUsers = async (
   query: Partial<ZammadUser>
 ) => {
   const { email, phone, mobile } = query
-  if (!USER_CACHE || USER_CACHE.length === 0) {
-    // @ts-ignore
-    USER_CACHE = await getAllUsers()
-  }
+  let USER_CACHE: ZammadUser[] = await getAllCachedUsers()
   const filtered = USER_CACHE.filter(d => {
     if (email) {
       return d.email === email
     }
 
+    /**
+     * The user can input phone numbers into two fields,
+     * so we check both
+     */
+
     if (phone) {
       const p = alternativeNumberFormats(phone).e164
-      if (alternativeNumberFormats(d.phone).e164 === p || alternativeNumberFormats(d.mobile).e164 === p) return true
+      return (
+        alternativeNumberFormats(d.phone).e164 === p ||
+        alternativeNumberFormats(d.mobile).e164 === p
+      )
     }
 
     if (mobile) {
-      const p = alternativeNumberFormats(phone).e164
-      if (alternativeNumberFormats(d.phone).e164 === p || alternativeNumberFormats(d.mobile).e164 === p) return true
+      const p = alternativeNumberFormats(mobile).e164
+      return (
+        alternativeNumberFormats(d.phone).e164 === p ||
+        alternativeNumberFormats(d.mobile).e164 === p
+      )
     }
 
     return false
@@ -146,17 +190,74 @@ export const searchZammadUsers = async (
   return filtered
 }
 
+export const searchZammadUsersWithRefinements = async (
+  q: Partial<ZammadUser>,
+  refinements: Array<Array<keyof ZammadUser>>
+) => {
+  let members: ZammadUser[] = []
+  let round = 0
+  while (
+    // Searching for members
+    members.length === 0 ||
+    // Still too many
+    members.length > 1 && (
+      // There's another level of refinements still to go
+      ((round - 1) > refinements.length)
+    )
+  ) {
+    // @ts-ignore
+    const keysToSearch = refinements.reduce((keys, nextRoundKeys, nextRoundIndex) => {
+      if (nextRoundIndex > round) return keys
+      return keys.concat(nextRoundKeys)
+    }, [])
+    // console.log("Searching for users", members.length, keysToSearch)
+    members = await searchZammadUsers(objectWithKeys(q, keysToSearch))
+    round++
+    if (round >= refinements.length) return members
+  }
+  return members
+}
+
+const objectWithKeys = <
+  T extends { [key: string]: any },
+  K extends keyof T
+>(
+  q: T,
+  keys: Array<K>
+) => {
+  return Object.entries<T>(q)
+    .filter(([key]) => keys.includes(key as any))
+    .reduce<Partial<Pick<T, K>>>(
+      (dict, [key, value]) => ({ ...dict, [key]: value }),
+      {}
+    )
+}
+
 export const createZammadUser = async (body: Partial<ZammadUser>) => {
-  return zammad.post<ZammadUser>('users', { body })
+  const data = await zammad.post<ZammadUser>('users', { body })
+  if (!data) throw new Error("Failed to create user. Nothing returned.")
+  try {
+    await ZammadUserCache().insert({ id: data.id, data })
+  } catch (e) {
+    Sentry.captureException(e)
+  }
+  return data
 }
 
 export const updateZammadUser = async (userId: any, { id, ...body }: Partial<ZammadUser>) => {
-  return await zammad.put<ZammadUser>(['users', userId], { body })
+  const data = await zammad.put<ZammadUser>(['users', userId], { body })
+  if (!data) throw new Error("Failed to update user. Nothing returned.")
+  try {
+    await ZammadUserCache().insert({ id: data.id, data })
+  } catch (e) {
+    Sentry.captureException(e)
+  }
+  return data
 }
 
 export const upsertZammadUser = async (body: Partial<ZammadUser>) => {
-  console.log('Upsert data', JSON.stringify(body))
-  const data = await searchZammadUsers(body)
+  // console.log('Upsert data', JSON.stringify(body))
+  const data = await searchZammadUsersWithRefinements(body, [['email', 'phone'], ['firstname', 'lastname']])
   let res
   if (data.length) {
     console.log('User already exists, so updating instead.', data.length)
@@ -168,7 +269,12 @@ export const upsertZammadUser = async (body: Partial<ZammadUser>) => {
   return res
 }
 
-export const deleteZammadUser = async (id: any) => {
+export const deleteZammadUser = async (id: number) => {
+  try {
+    await ZammadUserCache().where({ id }).delete()
+  } catch (e) {
+    Sentry.captureException(e)
+  }
   return await zammad.delete<ZammadUser>(['users', id])
 }
 
@@ -201,11 +307,11 @@ export const handleZammadWebhook = async (
   try {
     // Attach Zetkin user if necessary
     const { ticketId } = await parseZammadWebhookBody(req.body)
+    if (!ticketId) throw new Error("Couldn't identify ticket")
     const ticket = await zammad.get<ZammadTicket>(['tickets', ticketId])
+    if (!ticket) return
     const customer = await zammad.get<ZammadUser>(['users', ticket?.customer_id])
-    if (!customer) {
-      return
-    }
+    if (!customer) return
 
     // TODO: Sync data back to Zetkin
     // if (customer.zetkin_member_number) {
@@ -245,14 +351,64 @@ export const handleZammadWebhook = async (
 export const getTicketIdFromWebhookText = (text: string): number | null => {
   const ticketIdRegex = /zammad\.com\/#ticket\/zoom\/(?<ticketId>[0-9]{1,10})/gm
   const matches = ticketIdRegex.exec(text)
-  const ticketId = parseInt(matches?.groups?.ticketId)
-  return ticketId
+  const ticketId = matches?.groups?.ticketId
+  if (!ticketId) return null
+  return parseInt(ticketId)
 }
 
 export const parseZammadWebhookBody = async (body: { payload: ZammadWebhook } | any) => {
   const webhook = JSON.parse(body.payload as any)
   const ticketId = getTicketIdFromWebhookText(webhook?.attachments[0]?.text)
   return { ticketId }
+}
+
+const mapCustomerToDatabase = (user: ZammadUser): Partial<ZammadUserCacheItem> => {
+  return {
+    id: user.id,
+    data: user
+  }
+}
+
+export const saveUsersToDatabase = async (customers: ZammadUser[]) => {
+  const cached = await ZammadUserCache().select('*')
+  const cachedIds = cached.map(c => c.id)
+
+  /**
+   * Insert new records
+   */
+
+  const customersToAdd = customers.filter(d => !cachedIds.includes(d.id))
+
+  for (const cs of chunk(customersToAdd, 250)) {
+    await ZammadUserCache()
+      .insert(cs.map(mapCustomerToDatabase))
+  }
+
+  /**
+   * Update existing records
+   */
+
+  const customersToUpdate = customers.filter(d => cachedIds.includes(d.id))
+
+  // https://stackoverflow.com/a/48069213/1053937
+  await db.transaction(trx => {
+    const queries = [];
+
+    for (const customer of customersToUpdate) {
+      const newData = mapCustomerToDatabase(customer)
+      const query = ZammadUserCache()
+        .update(newData)
+        .where({ id: customer.id })
+        .transacting(trx) // This makes every update be in the same transaction
+      queries.push(query)
+    }
+
+    return Promise.all(queries) // Once every query is written
+        .then(trx.commit) // We try to execute all of them
+        .catch(trx.rollback); // And rollback in case any of them goes wrong
+  });
+
+  return customers
 }
 
 export interface ZammadWebhook {
@@ -270,6 +426,23 @@ export interface Attachment {
   color:     string;
 }
 
+export interface ZammadTicketPost extends Partial<ZammadTicket> {
+  article: ZammadTicketArticle
+}
+
+export interface ZammadTicketArticle  {
+  from?: string
+   "ticket_id"?: number,
+   "to"?: string
+   "cc"?: string
+   "subject"?: string
+   "body"?: string
+   "content_type"?: string
+   "type"?: string
+   "internal": boolean,
+   "time_unit"?: string
+}
+
 export interface ZammadTicket {
   id:                           number;
   group_id:                     number;
@@ -280,7 +453,7 @@ export interface ZammadTicket {
   title:                        string;
   owner_id:                     number;
   customer_id:                  number;
-  note:                         null;
+  note:                         any;
   first_response_at:            null;
   first_response_escalation_at: Date;
   first_response_in_min:        null;
@@ -315,6 +488,7 @@ export interface ZammadTicket {
   work_hours:                   string;
   colleagues:                   null;
   acasdeadline:                 null;
+  number_of_colleagues:         string
 }
 
 export interface Preferences {
@@ -379,6 +553,19 @@ export interface ZammadUser {
   organization_ids:             any[];
   authorization_ids:            any[];
   group_ids:                    GroupIDS;
+  language:                     string;
+  gender:                       string;
+  employer:                     string;
+  // Nasty typo TODO: Fix in Zammad and update here
+  workdplace_address:           string;
+  number_of_colleagues:         string;
+  workplace_zip:                string;
+  job_title:                    string;
+  number_of_payments:           number;
+  workplace_phone:              string;
+  workplace_email:              string;
+  wage_salary:                  string;
+  hours:                        string;
 }
 
 export interface GroupIDS {

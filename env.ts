@@ -1,6 +1,17 @@
 import * as dotenv from 'dotenv'
 import * as path from 'path'
 
+if (
+  !!process.env.NODE_ENV && (
+    process.env.NODE_ENV !== 'development' &&
+    process.env.NODE_ENV !== 'staging' &&
+    process.env.NODE_ENV !== 'test' &&
+    process.env.NODE_ENV !== 'production'
+  )
+) {
+  throw new Error(`Unexpected NODE_ENV setting: ${process.env.NODE_ENV}`)
+}
+
 if (process.env.NODE_ENV !== 'production') {
     dotenv.config({
       path: path.join(__dirname, '.envs', '.local', '.postgres')

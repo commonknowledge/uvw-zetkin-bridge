@@ -1,5 +1,5 @@
 
-import { ZammadUser, getAllUsers, updateZammadUser } from '../zammad';
+import { ZammadUser, getAllUsersFromZammad, updateZammadUser } from '../zammad';
 import findDuplicates from 'find-duplicates';
 import { alternativeNumberFormats } from '../../zetkin/zetkin';
 import { mergeWith } from 'lodash';
@@ -78,7 +78,7 @@ const debugDupes = <T>(name: string, data: ZammadUser[], serializer: (s: ZammadU
 
 const findDuplicates = async () => {
   this.timeout(60000)
-  const users = await getAllUsers()
+  const users = await getAllUsersFromZammad()
   const dupes = debugDupes('name', users, s => `${s.firstname} ${s.lastname}`)
     .filter(d => d.CAN_BE_DUPLICATED)
   for (const dupe of dupes) {

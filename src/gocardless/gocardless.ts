@@ -20,7 +20,11 @@ export const mapEventToRow = (e: GoCardless.Event) => ({
   action: e.action,
 })
 
-export const handleGoCardlessWebhook = async (req: Express.Request<null, null, { events: GoCardless.Event[] }>, res: Express.Response<any>) => {
+export const handleGoCardlessWebhook: RequestHandler<
+  any,
+  undefined | { error: Error, message: string },
+  { events: GoCardless.Event[]
+}> = async (req, res) => {
   try {
     if (!req.headers['webhook-signature']) {
       throw new Error("Now webhook-signature header found")
@@ -75,7 +79,7 @@ export const getLinked = async (event: { links: Partial<AllAvailableLinks> }, ..
   const data: GCObject<typeof resources>[] = [event]
   for (const resource of resources) {
     const lastItem = data[data.length - 1]
-    data.push(await gocardless[resource + 's'].find(lastItem.links[resource]))
+    data.push(await (gocardless as any)[resource + 's'].find(lastItem.links[resource]))
   }
   return data[data.length - 1]
 }
@@ -112,6 +116,8 @@ type linkResourceKey = keyof AllAvailableLinks
 
 import { format } from 'date-fns'
 import db from "../db"
+import { RequestHandler } from 'express';
+import { GoCardlessCustomerCache } from '../db';
 export const dateFormat = (d: Date): string => format(d, 'yyyy-MM-dd')
 export const getCustomerUrl = (customerId: string) => `https://manage.gocardless.com/customers/${customerId}`
 
@@ -124,7 +130,9 @@ export const getRelevantZetkinDataFromGoCardlessCustomer = async (
   if (!subscription) {
     const subscriptions = await gocardless.subscriptions.list({ customer: customerId });
     subscription = subscriptions.subscriptions.sort(
-      (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
+      (a, b) => a.start_date && b.start_date
+        ? new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
+        : 0
     )?.[0]
   }
   const gocardless_subscription_name = subscription?.name || 'No Subscription'
@@ -138,12 +146,14 @@ export const getRelevantZetkinDataFromGoCardlessCustomer = async (
   payments = payments
     .filter(payment => !!payment.links.payout)
     .sort(
-      (a, b) => new Date(a.charge_date).getTime() - new Date(b.charge_date).getTime()
+      (a, b) => a.charge_date && b.charge_date
+        ? new Date(a.charge_date).getTime() - new Date(b.charge_date).getTime()
+        : 0
     )
 
   // Payment history
-  let first_payment_date: string
-  let last_payment_date: string
+  let first_payment_date: string | undefined
+  let last_payment_date: string | undefined
   const first_payment = payments.length === 0 ? null
     : payments[0]
   if (first_payment) {
@@ -168,8 +178,10 @@ export const getRelevantZetkinDataFromGoCardlessCustomer = async (
   }
 }
 
-type ListResponse = {
+type ListResponse<T = any> = {
   meta: ListMeta;
+} & {
+  [key: string]: T[]
 }
 
 // export const getGoCardlessPaginatedList = async (
@@ -200,9 +212,9 @@ type ListResponse = {
 export const findGoCardlessCustomersBy = async (
   { email, phone_number, ...query }: Partial<GoCardless.Customer>
 ) => {
-  const dbquery = db<GoCardless.Customer>('gocardless_customers')
-    .orWhere({ email: email.trim() })
-    .orWhere(function () {
+  const dbquery = GoCardlessCustomerCache()
+    .orWhere(!email ? {} : { email: email.trim() })
+    .orWhere(!phone_number ? {} : function () {
       const numbers = Object.values(alternativeNumberFormats(phone_number.trim()))
       console.log(numbers)
       for (const p of numbers) {
@@ -218,7 +230,7 @@ export const getGoCardlessPaginatedList = async <T = any>(
   args: { limit: number, after?: string }
 ) => {
   let data: T[] = []
-  let res: ListResponse
+  let res: ListResponse<T> | undefined
   while (
     !data.length || (
       // moreDataRequired
@@ -231,11 +243,11 @@ export const getGoCardlessPaginatedList = async <T = any>(
     const nextArgs = { ...args }
     const after = res?.meta?.cursors?.after
     if (after) nextArgs.after = after
-    res = await gocardless[resource].list(nextArgs)
+    res = await (gocardless as any)[resource].list(nextArgs)
     const requiredDataLength = args.limit - data.length
-    console.log(`Adding ${res[resource].length} to ${data.length} of required ${args?.limit}`)
+    console.log(`Adding ${res?.[resource].length} to ${data.length} of required ${args?.limit}`)
     // console.log(new Set(data.map(d => d.id)).size)
-    data = data.concat(res[resource].slice(0, requiredDataLength))
+    data = res?.[resource] ? data.concat(res[resource].slice(0, requiredDataLength)) : []
     if (!res?.meta?.cursors?.after) {
       console.log(`Requested ${args?.limit} but there were only ${data?.length} entries.`)
       return data
