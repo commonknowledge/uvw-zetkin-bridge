@@ -1,6 +1,6 @@
 import { RequestHandler } from "express"
 import * as t from 'superstruct'
-import { ZammadTicket, ZammadUser, zammad, searchZammadUsers, createZammadUser, searchZammadUsersWithRefinements, ZammadTicketPost, updateZammadUser, ZammadTicketArticle } from './zammad';
+import { ZammadTicket, ZammadUser, zammad, searchZammadUsers, createZammadUser, searchZammadUsersWithRefinements, ZammadTicketPost, updateZammadUser, ZammadTicketArticle, tagObject } from './zammad';
 import { logRequest } from '../utils/log';
 
 const Enquiry = t.object({
@@ -128,6 +128,8 @@ const createTicketFromEnquiry = async (enquiry: EnquiryType): Promise<{
   const ticket = await zammad.post<ZammadTicket, ZammadTicketPost>('tickets', {
     body: zammadTicket
   })
+
+  await tagObject('ticket', ticket?.id, enquiry.issues, true)
 
   await zammad.post<ZammadTicketArticle, ZammadTicketArticle>('ticket_articles', {
     body: {

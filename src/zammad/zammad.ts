@@ -411,6 +411,43 @@ export const saveUsersToDatabase = async (customers: ZammadUser[]) => {
   return customers
 }
 
+export const getTags = () => {
+  // TODO: GET /api/v1/tags?object=Ticket&o_id=10
+}
+
+export const createTags = () => {
+  /** TODO:
+    POST /api/v1/tag_list
+
+    {
+      name: "tag 5"
+    }
+   */
+}
+
+export const deleteTags = () => {
+  // TODO: DELETE /api/v1/tag_list/{id}
+}
+
+export const getOrCreateTags = () => {
+  // POST /api/v1/tag_list
+  // {
+  //   name: "tag 5"
+  // }
+}
+
+export const tagObject = async (type: string, id: number, _tags: string | string[], createIfRequired = true) => {
+  const tags = Array.isArray(_tags) ? _tags : [_tags]
+  if (createIfRequired) await getOrCreateTags(tags)
+  // TODO: GET /api/v1/tags/add?object=Ticket&o_id=10&item=tag+4
+}
+
+export const untagObject = async (type: string, id: number, _tags: string | string[], createIfRequired = true) => {
+  const tags = Array.isArray(_tags) ? _tags : [_tags]
+  if (createIfRequired) await getOrCreateTags(tags)
+  // TODO: GET /api/v1/tags/remove?object=Ticket&o_id=10&item=tag+4
+}
+
 export interface ZammadWebhook {
   channel:     string;
   username:    string;

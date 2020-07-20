@@ -67,6 +67,28 @@ describe('Zammad webhook receiver', () => {
   //   expect((await getAllUsersFromZammad(501))).toHaveLength(501)
   // })
 
+  let tags = ["Some random tag", "Some other tag"]
+
+  it("Gets tags", async function () {
+    const currentTags = await getZammadTags()
+    expect(currentTags).toBeInstanceOf(Array)
+  })
+
+  it("Gets or creates tags", async function () {
+    const createdTags = await getZammadTags(tags)
+    expect(createdTags).toHaveLength(2)
+    const currentTags = await getZammadTags()
+    expect(currentTags.includes(tags[0])).toBeTruthy()
+    expect(currentTags.includes(tags[1])).toBeTruthy()
+  })
+
+  it("Deletes tags", async function () {
+    await deleteZammadTags(tags)
+    const currentTags = await getZammadTags()
+    expect(currentTags.includes(tags[0])).toBeFalsy()
+    expect(currentTags.includes(tags[1])).toBeFalsy()
+  })
+
   it('Searches users by email', async function () {
     this.timeout(60000)
     expect(await searchZammadUsers({ email: 'gemma@commonknowledge.coop' })).toHaveLength(1)
