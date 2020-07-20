@@ -25,7 +25,7 @@ export const handleEnquiryWebhook: RequestHandler<
   {
     // Success case
     enquiry?: EnquiryType
-    ticketId?: number
+    caseId?: number
     memberId?: number
     caseworkerId?: number
   } | {
@@ -39,8 +39,8 @@ export const handleEnquiryWebhook: RequestHandler<
   try {
     const enquiry = req.body
     t.assert(enquiry, Enquiry)
-    const { ticket, member, caseworker } = await createTicketFromEnquiry(enquiry)
-    return res.status(200).json({ enquiry, memberId: member?.id, ticketId: ticket?.id, caseworkerId: caseworker?.id })
+    const { ticket, member, caseworkerId } = await createTicketFromEnquiry(enquiry)
+    return res.status(200).json({ enquiry, memberId: member?.id, caseId: ticket?.id, caseworkerId })
   } catch (error) {
     try {
       res.status(500)
@@ -67,7 +67,7 @@ export const handleEnquiryWebhook: RequestHandler<
 const createTicketFromEnquiry = async (enquiry: EnquiryType): Promise<{
   ticket?: ZammadTicket,
   member?: ZammadUser,
-  caseworker?: ZammadUser
+  caseworkerId?: number
 }> => {
   const zammadUserData: Partial<ZammadUser> = {
     firstname: enquiry.firstName,
@@ -139,7 +139,7 @@ const createTicketFromEnquiry = async (enquiry: EnquiryType): Promise<{
     }
   })
 
-  return { member, ticket }
+  return { member, ticket, caseworkerId: ticket?.owner_id }
 }
 
 const objectToString = (o: object): string => {
