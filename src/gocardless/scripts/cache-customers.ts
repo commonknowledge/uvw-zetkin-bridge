@@ -6,7 +6,7 @@ import { upsertZammadUser, ZammadUser } from '../../zammad/zammad';
 import Phone from 'awesome-phonenumber';
 import { GoCardlessCustomerCache } from '../../db';
 
-const saveCustomersToDatabase = async (customers: GoCardless.Customer[]) => {
+export const saveCustomersToDatabase = async (customers: GoCardless.Customer[], createIfNew = true, updateIfExisting = true) => {
   const cached = await GoCardlessCustomerCache().select('*')
   const cachedIds = cached.map(c => c.id)
 
@@ -48,7 +48,7 @@ const saveCustomersToDatabase = async (customers: GoCardless.Customer[]) => {
   return customers
 }
 
-const syncCustomersToZammad = async () => {
+export const syncCustomersToZammad = async () => {
   const unsynced = await GoCardlessCustomerCache()
   const synced = []
   
@@ -94,12 +94,3 @@ const mapCustomerToDatabase = (c: GoCardless.Customer) => {
   const { created_at, metadata,...desireableData } = c
   return desireableData
 }
-
-(async () => {
-  const customers = await getGoCardlessPaginatedList<GoCardless.Customer>(
-    'customers', { limit: 50000 }
-  )
-  await saveCustomersToDatabase(customers)
-  await syncCustomersToZammad()
-  process.exit()
-})()
