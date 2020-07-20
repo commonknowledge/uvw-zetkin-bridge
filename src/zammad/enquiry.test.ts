@@ -18,7 +18,8 @@ const testTicket: EnquiryType = {
   jobTitle: "Test Maker",
   hourlyWageOrSalary: "A pittance",
   averageWorkHours: "Here and there",
-  numberOfColleagues: "4 or 5 but they switch us around a lot"
+  numberOfColleagues: "4 or 5 but they switch us around a lot",
+  issues: ["Bullying or discrimination"]
 }
 
 describe('Zammad ticket creator webhook', () => {
@@ -59,7 +60,7 @@ describe('Zammad ticket creator webhook', () => {
   })
 
   it("Zammad User and Ticket returned for valid enquiries", async function () {
-    this.timeout(10000)
+    this.timeout(20000)
     await supertest(devServer.config.app)
       .post('/webhooks/enquiry')
       .send(testTicket)
@@ -71,6 +72,9 @@ describe('Zammad ticket creator webhook', () => {
         expect(memberId).toBeDefined()
         expect(caseId).toBeDefined()
         console.log({ memberId, caseId })
+        // Tags are set
+        const tags = await getTagsFor('ticket', caseId)
+        expect(tags).toEqual(testTicket.issues)
         // GC
         memberIds.push(memberId)
         caseIds.push(caseId)
