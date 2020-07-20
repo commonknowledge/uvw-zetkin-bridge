@@ -4,6 +4,7 @@ import { zammad, ZammadTicket, deleteZammadUser, searchZammadUsers, deactivateZa
 import expect from 'expect';
 import { EnquiryType } from './enquiry';
 import { timeStamp } from 'console';
+import { RequestLog } from '../db';
 
 const devServer = new DevServer()
 
