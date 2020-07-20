@@ -21,7 +21,7 @@ const testTicket: EnquiryType = {
 }
 
 describe('Zammad ticket creator webhook', () => {
-  let ticketIds: number[] = []
+  let caseIds: number[] = []
   let memberIds: number[] = []
 
   before(() => {
@@ -34,7 +34,7 @@ describe('Zammad ticket creator webhook', () => {
       for (const u of memberIds.filter(Boolean)) {
         deactivateZammadUser(u)
       }
-      for (const t of ticketIds.filter(Boolean)) {
+      for (const t of caseIds.filter(Boolean)) {
         await zammad.delete(`/tickets/${t}`)
       }
     } catch (e) {
@@ -64,15 +64,15 @@ describe('Zammad ticket creator webhook', () => {
       .send(testTicket)
       .expect(200)
       .expect(async res => {
-        const { memberId, ticketId, enquiry } = res.body
+        const { memberId, caseId } = res.body
         // Logs are made
         expect(await RequestLog().select('*')).toHaveLength(1)
         expect(memberId).toBeDefined()
-        expect(ticketId).toBeDefined()
-        console.log({ memberId, ticketId })
+        expect(caseId).toBeDefined()
+        console.log({ memberId, caseId })
         // GC
         memberIds.push(memberId)
-        ticketIds.push(ticketId)
+        caseIds.push(caseId)
       })
   })
 
