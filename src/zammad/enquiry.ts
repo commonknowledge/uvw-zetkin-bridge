@@ -1,6 +1,7 @@
 import { RequestHandler } from "express"
 import * as t from 'superstruct'
 import { ZammadTicket, ZammadUser, zammad, searchZammadUsers, createZammadUser, searchZammadUsersWithRefinements, ZammadTicketPost, updateZammadUser, ZammadTicketArticle } from './zammad';
+import { logRequest } from '../utils/log';
 
 const Enquiry = t.object({
 	isMember: t.optional(t.nullable(t.boolean())),
@@ -37,6 +38,7 @@ export const handleEnquiryWebhook: RequestHandler<
   unknown
 > = async (req, res) => {
   try {
+    logRequest(req)
     const enquiry = req.body
     t.assert(enquiry, Enquiry)
     const { ticket, member, caseworkerId } = await createTicketFromEnquiry(enquiry)

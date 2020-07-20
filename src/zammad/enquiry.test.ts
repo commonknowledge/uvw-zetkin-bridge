@@ -63,8 +63,10 @@ describe('Zammad ticket creator webhook', () => {
       .post('/webhooks/enquiry')
       .send(testTicket)
       .expect(200)
-      .expect(res => {
+      .expect(async res => {
         const { memberId, ticketId, enquiry } = res.body
+        // Logs are made
+        expect(await RequestLog().select('*')).toHaveLength(1)
         expect(memberId).toBeDefined()
         expect(ticketId).toBeDefined()
         console.log({ memberId, ticketId })

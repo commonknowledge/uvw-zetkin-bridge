@@ -18,3 +18,11 @@ export type ZammadUserCacheItem = { id: number, data: ZammadUser } & Timestamps
 export const ZammadUserCache = () => db<ZammadUserCacheItem>('zammad_users')
 
 export const GoCardlessCustomerCache = () => db<GoCardless.Customer>('gocardless_customers')
+
+export interface RequestItem extends Timestamps {
+  id?: number
+  headers: any
+  body: any
+}
+
+export const RequestLog = () => db<RequestItem>('request_log')
