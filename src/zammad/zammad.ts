@@ -411,41 +411,84 @@ export const saveUsersToDatabase = async (customers: ZammadUser[]) => {
   return customers
 }
 
-export const getTags = () => {
-  // TODO: GET /api/v1/tags?object=Ticket&o_id=10
+interface Tag {
+  id?: number
+  value: string
 }
 
-export const createTags = () => {
-  /** TODO:
-    POST /api/v1/tag_list
+type ObjectType = "Ticket"
 
-    {
-      name: "tag 5"
+export const getTagsFor = async (object: ObjectType, o_id: any): Promise<string[] | undefined> => {
+  const res = await zammad.get('/tags', {
+    query: {
+      object,
+      o_id
     }
-   */
+  })
+  return res?.tags || undefined
 }
 
-export const deleteTags = () => {
-  // TODO: DELETE /api/v1/tag_list/{id}
+export const getTag = async (term: string): Promise<Tag | undefined> => {
+  const list = await zammad.get<{ id: number, name: string }[]>('tag_list', {
+    query: { term }
+  })
+  return list
+    ?.map(tag => ({ id: tag.id, value: tag.name }))
+    .find(tag => tag.value === term)
 }
 
-export const getOrCreateTags = () => {
-  // POST /api/v1/tag_list
-  // {
-  //   name: "tag 5"
-  // }
+export const createTags = async (_names: string[]): Promise<boolean[]> => {
+  const names = Array.isArray(_names) ? _names : [_names]
+  const tags: boolean[] = []
+  for (const name of names) {
+    tags.push(!!(await zammad.post('tag_list', {
+      body: { name }
+    })))
+  }
+  return tags
 }
 
-export const tagObject = async (type: string, id: number, _tags: string | string[], createIfRequired = true) => {
+export const deleteTags = async (_names: string[]) => {
+  const names = Array.isArray(_names) ? _names : [_names]
+  for (const name of names) {
+    await zammad.delete(['tag_list', name])
+  }
+}
+
+export const getOrCreateTags = async (_names: string[]) => {
+  const names = Array.isArray(_names) ? _names : [_names]
+  for (const name of names) {
+    if (!(await getTag(name))) {
+      await createTags([name])
+    }
+  }
+}
+
+export const tagObject = async (object: ObjectType, o_id: any, _tags: string | string[], createIfRequired = true) => {
   const tags = Array.isArray(_tags) ? _tags : [_tags]
   if (createIfRequired) await getOrCreateTags(tags)
-  // TODO: GET /api/v1/tags/add?object=Ticket&o_id=10&item=tag+4
+  for (const tag of tags) {
+    zammad.get(['tags', 'add'], {
+      query: {
+        object,
+        o_id,
+        item: tag
+      }
+    })
+  }
 }
 
-export const untagObject = async (type: string, id: number, _tags: string | string[], createIfRequired = true) => {
+export const untagObject = async (object: ObjectType, o_id: any, _tags: string | string[]) => {
   const tags = Array.isArray(_tags) ? _tags : [_tags]
-  if (createIfRequired) await getOrCreateTags(tags)
-  // TODO: GET /api/v1/tags/remove?object=Ticket&o_id=10&item=tag+4
+  for (const tag of tags) {
+    zammad.get(['tags', 'remove'], {
+      query: {
+        object,
+        o_id,
+        item: tag
+      }
+    })
+  }
 }
 
 export interface ZammadWebhook {

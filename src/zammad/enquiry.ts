@@ -129,13 +129,19 @@ const createTicketFromEnquiry = async (enquiry: EnquiryType): Promise<{
     body: zammadTicket
   })
 
-  await tagObject('ticket', ticket?.id, enquiry.issues, true)
+  if (!ticket) {
+    throw new Error("Couldn't create a ticket for this enquiry")
+  }
+
+  if (enquiry.issues?.length) {
+    await tagObject('Ticket', ticket.id, enquiry.issues, true)
+  }
 
   await zammad.post<ZammadTicketArticle, ZammadTicketArticle>('ticket_articles', {
     body: {
       subject: "Further details",
       // from: `${enquiry.firstName} ${enquiry.lastName} <${enquiry.email || enquiry.phone}>`,
-      ticket_id: ticket?.id,
+      ticket_id: ticket.id,
       type: "note",
       body: objectToString(metadata),
       content_type: "text/html",
@@ -143,7 +149,7 @@ const createTicketFromEnquiry = async (enquiry: EnquiryType): Promise<{
     }
   })
 
-  return { member, ticket, caseworkerId: ticket?.owner_id }
+  return { member, ticket, caseworkerId: ticket.owner_id }
 }
 
 const objectToString = (o: object): string => {
