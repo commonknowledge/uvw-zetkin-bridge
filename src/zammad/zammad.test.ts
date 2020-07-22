@@ -97,38 +97,30 @@ describe('Zammad webhook receiver', () => {
 
   it('Searches users by email', async function () {
     this.timeout(60000)
-    expect(await searchZammadUsers({ email: 'gemma@commonknowledge.coop' })).toHaveLength(1)
+    expect(await searchZammadUsers({ email: 'gemmacopeland@pm.me' })).toHaveLength(1)
   })
 
-  it('Searches users by phone', async function () {
+  it('Searches users by exact phone', async function () {
     this.timeout(60000)
-    expect.extend({
-      toBeAround(actual:number, expected:number, precision = 2) {
-        const pass = Math.abs(expected - actual) < Math.pow(10, -precision) / 2;
-        if (pass) {
-          return {
-            message: () => `expected ${actual} not to be around ${expected}`,
-            pass: true
-          };
-        } else {
-          return {
-            message: () => `expected ${actual} to be around ${expected}`,
-            pass: false
-          }
-        }
-      }
-    });
     // @ts-ignore
-    let res = (await searchZammadUsers({ phone: '‭07727 327927‬' }))
-    expect(res.length).toBeGreaterThanOrEqual(1)
-    expect(res.length).toBeLessThanOrEqual(3)
-    // @ts-ignore
-    res = (await searchZammadUsers({ phone: '‭07727327927‬' }))
+    const res = (await searchZammadUsers({ phone: '‭07727327927‬' }))
     expect(res.length).toBeGreaterThanOrEqual(1)
     expect(res.length).toBeGreaterThanOrEqual(1)
     expect(res.length).toBeLessThanOrEqual(3)
+  })
+
+  it('Searches users by arbitrarily formatted phone', async function () {
+    this.timeout(60000)
     // @ts-ignore
-    res = (await searchZammadUsers({ phone: '‭+447727327927‬' }))
+    const res = (await searchZammadUsers({ phone: '‭07727 327 927‬' }))
+    expect(res.length).toBeGreaterThanOrEqual(1)
+    expect(res.length).toBeLessThanOrEqual(3)
+  })
+
+  it('Searches users by international phone', async function () {
+    this.timeout(60000)
+    // @ts-ignore
+    const res = (await searchZammadUsers({ phone: '‭+447727327927‬' }))
     expect(res.length).toBeGreaterThanOrEqual(1)
     expect(res.length).toBeGreaterThanOrEqual(1)
     expect(res.length).toBeLessThanOrEqual(3)

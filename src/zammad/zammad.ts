@@ -159,8 +159,10 @@ export const searchZammadUsers = async (
   const { email, phone, mobile } = query
   let USER_CACHE: ZammadUser[] = await getAllCachedUsers()
   const filtered = USER_CACHE.filter(d => {
+    if (!d) return false
+
     if (email) {
-      return d.email === email
+      return d?.email === email
     }
 
     /**
@@ -171,16 +173,16 @@ export const searchZammadUsers = async (
     if (phone) {
       const p = alternativeNumberFormats(phone).e164
       return (
-        alternativeNumberFormats(d.phone).e164 === p ||
-        alternativeNumberFormats(d.mobile).e164 === p
+        alternativeNumberFormats(d?.phone).e164 === p ||
+        alternativeNumberFormats(d?.mobile).e164 === p
       )
     }
 
     if (mobile) {
       const p = alternativeNumberFormats(mobile).e164
       return (
-        alternativeNumberFormats(d.phone).e164 === p ||
-        alternativeNumberFormats(d.mobile).e164 === p
+        alternativeNumberFormats(d?.phone).e164 === p ||
+        alternativeNumberFormats(d?.mobile).e164 === p
       )
     }
 
