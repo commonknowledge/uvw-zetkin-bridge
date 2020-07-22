@@ -428,13 +428,14 @@ export const getTagsFor = async (object: ObjectType, o_id: any): Promise<string[
   return res?.tags || undefined
 }
 
+export const getTags = async (): Promise<Tag[] | undefined> => {
+  const list = await zammad.get<{ id: number, name: string }[]>('tag_list')
+  return list?.map(tag => ({ id: tag.id, value: tag.name }))
+}
+
 export const getTag = async (term: string): Promise<Tag | undefined> => {
-  const list = await zammad.get<{ id: number, name: string }[]>('tag_list', {
-    query: { term }
-  })
-  return list
-    ?.map(tag => ({ id: tag.id, value: tag.name }))
-    .find(tag => tag.value === term)
+  const list = await getTags()
+  return list?.find(tag => tag.value === term)
 }
 
 export const createTags = async (_names: string[]): Promise<boolean[]> => {

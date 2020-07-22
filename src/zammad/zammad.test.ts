@@ -1,6 +1,6 @@
 import expect from 'expect'
 import supertest from 'supertest'
-import { zammad, ZammadUser, ZammadTicket, getTicketIdFromWebhookText, updateZammadUser, parseZammadWebhookBody, searchZammadUsers, getAllUsersFromZammad } from './zammad';
+import { zammad, ZammadUser, ZammadTicket, getTicketIdFromWebhookText, updateZammadUser, parseZammadWebhookBody, searchZammadUsers, getAllUsersFromZammad, getTag, getTags, getOrCreateTags, deleteTags } from './zammad';
 import { DevServer } from '../dev';
 import { getRelevantZammadDataFromZetkinUser, getOrCreateZetkinPersonByZammadUser } from './zetkin-sync';
 import { ZammadObjectProperty } from './types';
@@ -70,23 +70,24 @@ describe('Zammad webhook receiver', () => {
   let tags = ["Some random tag", "Some other tag"]
 
   it("Gets tags", async function () {
-    const currentTags = await getZammadTags()
+    const currentTags = await getTags()
     expect(currentTags).toBeInstanceOf(Array)
   })
 
   it("Gets or creates tags", async function () {
-    const createdTags = await getZammadTags(tags)
-    expect(createdTags).toHaveLength(2)
-    const currentTags = await getZammadTags()
-    expect(currentTags.includes(tags[0])).toBeTruthy()
-    expect(currentTags.includes(tags[1])).toBeTruthy()
+    await getOrCreateTags(tags)
+    const receivedTags = (await getTags())?.map(t => t.value)
+    expect(receivedTags).toBeDefined()
+    expect(receivedTags?.includes(tags[0])).toBeTruthy()
+    expect(receivedTags?.includes(tags[1])).toBeTruthy()
   })
 
   it("Deletes tags", async function () {
-    await deleteZammadTags(tags)
-    const currentTags = await getZammadTags()
-    expect(currentTags.includes(tags[0])).toBeFalsy()
-    expect(currentTags.includes(tags[1])).toBeFalsy()
+    await deleteTags(tags)
+    const receivedTags = (await getTags())?.map(t => t.value)
+    expect(receivedTags).toBeDefined()
+    expect(receivedTags?.includes(tags[0])).toBeFalsy()
+    expect(receivedTags?.includes(tags[1])).toBeFalsy()
   })
 
   it('Searches users by email', async function () {

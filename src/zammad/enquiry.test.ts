@@ -1,6 +1,6 @@
 import supertest from 'supertest';
 import { DevServer } from '../dev';
-import { zammad, ZammadTicket, deleteZammadUser, searchZammadUsers, deactivateZammadUser } from './zammad';
+import { zammad, ZammadTicket, deleteZammadUser, searchZammadUsers, deactivateZammadUser, getTagsFor } from './zammad';
 import expect from 'expect';
 import { EnquiryType } from './enquiry';
 import { timeStamp } from 'console';
@@ -73,7 +73,7 @@ describe('Zammad ticket creator webhook', () => {
         expect(caseId).toBeDefined()
         console.log({ memberId, caseId })
         // Tags are set
-        const tags = await getTagsFor('ticket', caseId)
+        const tags = await getTagsFor('Ticket', caseId)
         expect(tags).toEqual(testTicket.issues)
         // GC
         memberIds.push(memberId)
