@@ -1,6 +1,6 @@
 import expect from 'expect'
 import supertest from 'supertest'
-import { zammad, ZammadUser, ZammadTicket, getTicketIdFromWebhookText, updateZammadUser, parseZammadWebhookBody, searchZammadUsers, getAllUsersFromZammad, getTag, getTags, getOrCreateTags, deleteTags } from './zammad';
+import { zammad, ZammadUser, ZammadTicket, getTicketIdFromWebhookText, updateZammadUser, parseZammadWebhookBody, searchZammadUsers, getAllUsersFromZammad, getTag, getTags, getOrCreateTags, deleteTags, Tag } from './zammad';
 import { DevServer } from '../dev';
 import { getRelevantZammadDataFromZetkinUser, getOrCreateZetkinPersonByZammadUser } from './zetkin-sync';
 import { ZammadObjectProperty } from './types';
@@ -68,6 +68,7 @@ describe('Zammad webhook receiver', () => {
   // })
 
   let tags = ["Some random tag", "Some other tag"]
+  let tagsCreated: (Tag | boolean)[]
 
   it("Gets tags", async function () {
     const currentTags = await getTags()
@@ -75,7 +76,8 @@ describe('Zammad webhook receiver', () => {
   })
 
   it("Gets or creates tags", async function () {
-    await getOrCreateTags(tags)
+    this.timeout(10000)
+    tagsCreated = await getOrCreateTags(tags)
     const receivedTags = (await getTags())?.map(t => t.value)
     expect(receivedTags).toBeDefined()
     expect(receivedTags?.includes(tags[0])).toBeTruthy()
@@ -83,7 +85,10 @@ describe('Zammad webhook receiver', () => {
   })
 
   it("Deletes tags", async function () {
-    await deleteTags(tags)
+    await deleteTags(tagsCreated
+      .filter((t) => typeof t !== 'boolean')
+      .map((t) => (t as Tag).id)
+    )
     const receivedTags = (await getTags())?.map(t => t.value)
     expect(receivedTags).toBeDefined()
     expect(receivedTags?.includes(tags[0])).toBeFalsy()

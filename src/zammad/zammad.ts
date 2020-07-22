@@ -411,12 +411,12 @@ export const saveUsersToDatabase = async (customers: ZammadUser[]) => {
   return customers
 }
 
-interface Tag {
-  id?: number
+export interface Tag {
+  id: number
   value: string
 }
 
-type ObjectType = "Ticket"
+export type ObjectType = "Ticket"
 
 export const getTagsFor = async (object: ObjectType, o_id: any): Promise<string[] | undefined> => {
   const res = await zammad.get('/tags', {
@@ -449,20 +449,27 @@ export const createTags = async (_names: string[]): Promise<boolean[]> => {
   return tags
 }
 
-export const deleteTags = async (_names: string[]) => {
-  const names = Array.isArray(_names) ? _names : [_names]
-  for (const name of names) {
-    await zammad.delete(['tag_list', name])
+export const deleteTags = async (_ids: number[]) => {
+  const ids = Array.isArray(_ids) ? _ids : [_ids]
+  for (const id of ids) {
+    await zammad.delete(['tag_list', id])
   }
 }
 
 export const getOrCreateTags = async (_names: string[]) => {
   const names = Array.isArray(_names) ? _names : [_names]
+  const tags = []
   for (const name of names) {
-    if (!(await getTag(name))) {
+    const tag = await getTag(name)
+    if (tag) {
+      tags.push(tag)
+    } else {
       await createTags([name])
+      const tag = await getTag(name) || false
+      tags.push(tag)
     }
   }
+  return tags
 }
 
 export const tagObject = async (object: ObjectType, o_id: any, _tags: string | string[], createIfRequired = true) => {
