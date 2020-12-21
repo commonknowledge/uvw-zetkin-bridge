@@ -13,7 +13,7 @@ export interface Timestamps {
   updated_at: Date
 }
 
-export type ZammadUserCacheItem = { id: number, data: ZammadUser } & Timestamps
+export type ZammadUserCacheItem = { id: number, mobile?: string, phone?: string, email?: string, data: ZammadUser } & Timestamps
 
 export const ZammadUserCache = () => db<ZammadUserCacheItem>('zammad_users')
 

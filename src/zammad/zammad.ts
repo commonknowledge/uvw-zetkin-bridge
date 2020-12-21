@@ -9,7 +9,7 @@ import * as GoCardless from 'gocardless-nodejs';
 import * as queryString from 'query-string'
 import { alternativeNumberFormats } from '../zetkin/zetkin';
 import * as Sentry from '@sentry/node';
-import { ZammadUserCacheItem, ZammadUserCache } from '../db';
+import { ZammadUserCacheItem, ZammadUserCache, GoCardlessCustomerCache } from '../db';
 import { ZammadObjectProperty, ZammadObjectPropertyFromList } from './types';
 
 if (
@@ -158,33 +158,51 @@ export const searchZammadUsers = async (
   query: Partial<ZammadUser>
 ) => {
   const { email, phone, mobile } = query
-  let USER_CACHE: ZammadUser[] = await getAllCachedUsers()
-  const filtered = USER_CACHE.filter(d => {
-    if (!d) return false
+  
+  // Email checks are easily done on database
+  if (email) {
+    return ZammadUserCache().select('*').where({ email: email.trim() })
+  }
 
-    if (email) {
-      return d?.email === email
+  // If it's phone number, first try the database because it is much quicker
+  if (phone) {
+    const p = alternativeNumberFormats(phone).e164
+    const users = await ZammadUserCache()
+      .orWhere({ phone: p })
+      .orWhere({ mobile: p })
+    if (users.length) {
+      return users
     }
+  }
+  if (mobile) {
+    const m = alternativeNumberFormats(mobile).e164
+    const users = await ZammadUserCache()
+      .orWhere({ phone: m })
+      .orWhere({ mobile: m })
+    if (users.length) {
+      return users
+    }
+  }
 
-    /**
-     * The user can input phone numbers into two fields,
-     * so we check both
-     */
+  // Else download the database and do more of this locally
+  // because numbers can be in all sorts of formats
+  let USER_CACHE: ZammadUser[] = await getAllCachedUsers()
 
+  const filtered = USER_CACHE.filter(d => {
     if (phone) {
       const p = alternativeNumberFormats(phone).e164
-      return (
+      if (
         alternativeNumberFormats(d?.phone).e164 === p ||
         alternativeNumberFormats(d?.mobile).e164 === p
-      )
+      ) return true
     }
 
     if (mobile) {
       const p = alternativeNumberFormats(mobile).e164
-      return (
+      if (
         alternativeNumberFormats(d?.phone).e164 === p ||
         alternativeNumberFormats(d?.mobile).e164 === p
-      )
+      ) return true
     }
 
     return false
@@ -240,7 +258,7 @@ export const createZammadUser = async (body: Partial<ZammadUser>) => {
   const data = await zammad.post<ZammadUser>('users', { body })
   if (!data) throw new Error("Failed to create user. Nothing returned.")
   try {
-    await ZammadUserCache().insert({ id: data.id, data })
+    await ZammadUserCache().insert(mapCustomerToDatabase(data))
   } catch (e) {
     Sentry.captureException(e)
   }
@@ -251,7 +269,7 @@ export const updateZammadUser = async (userId: any, { id, ...body }: Partial<Zam
   const data = await zammad.put<ZammadUser>(['users', userId], { body })
   if (!data) throw new Error("Failed to update user. Nothing returned.")
   try {
-    await ZammadUserCache().insert({ id: data.id, data })
+    await ZammadUserCache().insert(mapCustomerToDatabase(data))
   } catch (e) {
     Sentry.captureException(e)
   }
@@ -368,6 +386,9 @@ export const parseZammadWebhookBody = async (body: { payload: ZammadWebhook } | 
 const mapCustomerToDatabase = (user: ZammadUser): Partial<ZammadUserCacheItem> => {
   return {
     id: user.id,
+    phone: user.phone,
+    mobile: user.mobile,
+    email: user.email,
     data: user
   }
 }
