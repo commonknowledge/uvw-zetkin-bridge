@@ -124,7 +124,7 @@ describe('GoCardless webhook receiver', () => {
       first_payment_date: "2020-05-01",
       gocardless_status: "active",
       gocardless_url: getCustomerUrl(id),
-      // gocardless_id: id,
+      // gocardless_number: id,
       // number_of_payments: expect.any([]),
       gocardless_subscription_name: "UVW membership (gross monthly salary above £1,101)",
       // gocardless_subscription_id: "SB000940CGEJVF",

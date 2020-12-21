@@ -145,7 +145,7 @@ export const expectedProperties: ZammadObjectProperty[] = [
   //   }
   // },  
   {
-    "name": "gocardless_id",
+    "name": "gocardless_number",
     "object": "User",
     "display": "GoCardless Customer Number",
     "active": true,

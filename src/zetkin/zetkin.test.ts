@@ -53,7 +53,7 @@
 //     phone: '+447704100000'
 //   },
 //   customFields: {
-//     gocardless_id: 1,
+//     gocardless_number: 1,
 //     gocardless_url: "https://commonknowledge.coop"
 //   },
 //   deleteCustomFields: {}

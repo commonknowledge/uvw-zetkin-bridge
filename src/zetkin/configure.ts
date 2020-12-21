@@ -103,7 +103,7 @@ export const expectedCustomFields = [
         "type": "text",
         "description": "",
         "title": "GoCardless customer ID",
-        "slug": "gocardless_id",
+        "slug": "gocardless_number",
         "id": 4
     },
     {

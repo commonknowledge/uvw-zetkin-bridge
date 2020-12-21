@@ -167,7 +167,7 @@ export const getPayAndSubscriptionDataFromGoCardlessCustomer = async (
   const number_of_payments = payments.length
 
   return {
-    gocardless_id: customerId,
+    gocardless_number: customerId,
     gocardless_url: getCustomerUrl(customerId),
     gocardless_subscription_name,
     // gocardless_subscription_id,

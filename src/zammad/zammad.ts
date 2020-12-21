@@ -324,7 +324,7 @@ export const handleZammadWebhook = async (
     // const data = await getRelevantZammadDataFromZetkinUser(matchingZetkinMember)
     // if (!data) return
 
-    let gocardlessCustomerId = customer.gocardless_id
+    let gocardlessCustomerId = customer.gocardless_number
 
     if (!gocardlessCustomerId) {
       const gocardlessCustomers = await findGoCardlessCustomersBy({
@@ -632,7 +632,7 @@ export interface ZammadUser {
   created_at:                   Date;
   updated_at:                   Date;
   zetkin_member_number:         string | null;
-  gocardless_id:   string | null;
+  gocardless_number:   string | null;
   zetkin_url: string | null;
   gocardless_url: string | null
   gocardless_status: string | null
