@@ -515,7 +515,7 @@ export const upsertZammadObjectProperty = async (body: ZammadObjectProperty) => 
       if (!existingProperty) {
         throw new Error("Couldn't update existing object.")
       }
-      const response = zammad.put('object_manager_attributes', { body: {
+      const response = zammad.put(`object_manager_attributes/${existingProperty.id}`, { body: {
         id: existingProperty.id,
         ...body
       } })
