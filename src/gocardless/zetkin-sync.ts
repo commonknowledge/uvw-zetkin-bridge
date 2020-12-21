@@ -1,5 +1,5 @@
 import GoCardless from 'gocardless-nodejs';
-import { getLinked, getRelevantZetkinDataFromGoCardlessCustomer } from './gocardless';
+import { getLinked, getPayAndSubscriptionDataFromGoCardlessCustomer } from './gocardless';
 import { updateZetkinMember, ZetkinMemberGet, addZetkinNoteToMember, upsertZetkinPerson, findZetkinMemberByQuery, findZetkinMembersByFilters, updateZetkinMemberCustomFields, findZetkinMemberByProperties, ZetkinMemberPost, getOrCreateZetkinTag, Tag } from '../zetkin/zetkin';
 import { TAGS } from '../zetkin/configure';
 
@@ -10,7 +10,7 @@ export const getInterestingEvents = (events: GoCardless.Event[]) => {
 }
 
 export const mapGoCardlessCustomerToZetkinMember = async (customer: GoCardless.Customer): Promise<ZetkinMemberPost> => {
-  const customFields = await getRelevantZetkinDataFromGoCardlessCustomer(customer.id)
+  const customFields = await getPayAndSubscriptionDataFromGoCardlessCustomer(customer.id)
 
   const tags = await Promise.all([
     TAGS.CREATED_BY_GOCARDLESS,
@@ -62,7 +62,7 @@ export const processEvent = async (event: GoCardless.Event) => {
       const message = `${event.details.description}. Payment details: ${parseInt(payment.amount) / 100} ${payment.currency} ${payment.description}}`
 
       await addNoteToZetkinPerson(zetkinPerson.id, message)
-      await updateZetkinMemberCustomFields(zetkinPerson.id, await getRelevantZetkinDataFromGoCardlessCustomer(customer.id))
+      await updateZetkinMemberCustomFields(zetkinPerson.id, await getPayAndSubscriptionDataFromGoCardlessCustomer(customer.id))
     } else if (
       event.resource_type === 'subscriptions' &&
       ["finished", "cancelled", "paused", "resumed", "amended", "customer_approval_granted", "customer_approval_denied", "created"].includes(event.action)
@@ -74,7 +74,7 @@ export const processEvent = async (event: GoCardless.Event) => {
       const message = `${event.details.description}. Subscription name: ${subscription.name}`
 
       await addNoteToZetkinPerson(zetkinPerson.id, message)
-      await updateZetkinMemberCustomFields(zetkinPerson.id, await getRelevantZetkinDataFromGoCardlessCustomer(customer.id))
+      await updateZetkinMemberCustomFields(zetkinPerson.id, await getPayAndSubscriptionDataFromGoCardlessCustomer(customer.id))
     }
   } catch (e) {
     console.error(e)

@@ -22,26 +22,26 @@ export default () => {
   app.use(bodyParser.urlencoded({ extended: false }))
   // parse application/json
   app.use(bodyParser.json())
-  app.use(auth.initialize(zetkinAuthOpts));
-  app.use(authStorageInterceptor)
-  app.get('/zetkin/login', zetkinLogin)
-  app.get('/zetkin/logout', zetkinLogout);
-  app.get('/zetkin/upgrade', zetkinUpgradeToken)
-  if (process.env.NODE_ENV !== 'production') {
-    app.get('/zetkin/tokens', validate(false), zetkinTokens)
-    app.get('/zetkin/refresh', validate(true), zetkinTokens)
-  }
+  // app.use(auth.initialize(zetkinAuthOpts));
+  // app.use(authStorageInterceptor)
+  // app.get('/zetkin/login', zetkinLogin)
+  // app.get('/zetkin/logout', zetkinLogout);
+  // app.get('/zetkin/upgrade', zetkinUpgradeToken)
+  // if (process.env.NODE_ENV !== 'production') {
+  //   app.get('/zetkin/tokens', validate(false), zetkinTokens)
+  //   app.get('/zetkin/refresh', validate(true), zetkinTokens)
+  // }
 
   app.get('/', (req, res) => {
     res.json(helloWorld)
   })
 
-  app.get('/zetkin', async (req, res) => {
-    const { data } = await aggressivelyRetry(async (client) =>
-      client.resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'fields').get()
-    )
-    return res.json(data)
-  })
+  // app.get('/zetkin', async (req, res) => {
+  //   const { data } = await aggressivelyRetry(async (client) =>
+  //     client.resource('orgs', process.env.ZETKIN_ORG_ID, 'people', 'fields').get()
+  //   )
+  //   return res.json(data)
+  // })
 
   app.all('/webhooks/gocardless', handleGoCardlessWebhook)
   app.all('/webhooks/zammad', handleZammadWebhook)

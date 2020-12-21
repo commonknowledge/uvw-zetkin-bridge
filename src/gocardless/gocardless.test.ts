@@ -3,7 +3,7 @@ import supertest from 'supertest'
 import db from "../db"
 import GoCardless from 'gocardless-nodejs';
 import { DevServer } from '../dev';
-import { getRelevantZetkinDataFromGoCardlessCustomer, gocardless, dateFormat, getCustomerUrl, getGoCardlessPaginatedList } from './gocardless';
+import { getPayAndSubscriptionDataFromGoCardlessCustomer, gocardless, dateFormat, getCustomerUrl, getGoCardlessPaginatedList } from './gocardless';
 import { getZetkinPersonByGoCardlessCustomer, getOrCreateZetkinPersonByGoCardlessCustomer, mapGoCardlessCustomerToZetkinMember } from './zetkin-sync';
 import { getZetkinCustomData, getZetkinMemberTags, getOrCreateZetkinTag } from '../zetkin/zetkin';
 import { TAGS } from '../zetkin/configure';
@@ -119,7 +119,7 @@ describe('GoCardless webhook receiver', () => {
   it('Gets relevant gocardless data for a known customer', async function () {
     const id = "CU000STHXDH55S"
     const lastKnownPaymentDate = "2020-06-02"
-    const { last_payment_date, ...data } = await getRelevantZetkinDataFromGoCardlessCustomer(id)
+    const { last_payment_date, ...data } = await getPayAndSubscriptionDataFromGoCardlessCustomer(id)
     expect(data).toMatchObject({
       first_payment_date: "2020-05-01",
       gocardless_status: "active",

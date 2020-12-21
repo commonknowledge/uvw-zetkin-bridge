@@ -3,7 +3,7 @@ import * as fetch from 'node-fetch'
 import { merge, chunk } from 'lodash'
 import * as path from 'path';
 import { getRelevantZammadDataFromZetkinUser, getOrCreateZetkinPersonByZammadUser, mapZammadCustomerToZetkinMember } from './zetkin-sync';
-import { getRelevantZetkinDataFromGoCardlessCustomer, findGoCardlessCustomersBy } from '../gocardless/gocardless';
+import { getPayAndSubscriptionDataFromGoCardlessCustomer, findGoCardlessCustomersBy } from '../gocardless/gocardless';
 import db from "../db"
 import * as GoCardless from 'gocardless-nodejs';
 import * as queryString from 'query-string'
@@ -336,7 +336,7 @@ export const handleZammadWebhook = async (
     }
 
     if (gocardlessCustomerId) {
-      const gocardlessData = await getRelevantZetkinDataFromGoCardlessCustomer(gocardlessCustomerId)
+      const gocardlessData = await getPayAndSubscriptionDataFromGoCardlessCustomer(gocardlessCustomerId)
 
       await updateZammadUser(
         customer.id,

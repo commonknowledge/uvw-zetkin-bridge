@@ -121,7 +121,7 @@ import { GoCardlessCustomerCache } from '../db';
 export const dateFormat = (d: Date): string => format(d, 'yyyy-MM-dd')
 export const getCustomerUrl = (customerId: string) => `https://manage.gocardless.com/customers/${customerId}`
 
-export const getRelevantZetkinDataFromGoCardlessCustomer = async (
+export const getPayAndSubscriptionDataFromGoCardlessCustomer = async (
   customerId: string,
   subscription?: GoCardless.Subscription,
   payments?: GoCardless.Payment[]
