@@ -6,10 +6,12 @@
   "author": "Common Knowledge Co-operative <hello@commonknowledge.coop>",
   "license": "AGPL-3.0",
   "scripts": {
-    "start": "yarn migrate && node ./build/src/index.js",
+    "start": "yarn migrate && yarn migrate-zammad && yarn up",
+    "up": "node ./build/src/index.js",
     "develop:db": "docker-compose up",
     "develop": "nodemon",
     "migrate": "knex migrate:latest",
+    "migrate-zammad": "node ./build/src/zammad/scripts/configure-database.js",
     "makemigration": "NODE_ENV=development knex migrate:make -x ts",
     "build": "NODE_ENV=production tsc --project tsconfig.json",
     "test": "NODE_ENV=test mocha -r ts-node/register 'src/**/*.test.ts' --watch --watch-files 'src/**/*.ts'",

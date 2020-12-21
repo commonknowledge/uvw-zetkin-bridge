@@ -4,7 +4,7 @@ import { zammad, ZammadUser, ZammadTicket, getTicketIdFromWebhookText, updateZam
 import { DevServer } from '../dev';
 import { getRelevantZammadDataFromZetkinUser, getOrCreateZetkinPersonByZammadUser } from './zetkin-sync';
 import { ZammadObjectProperty } from './types';
-import { expectedProperties } from './configure';
+import { expectedProperties } from './scripts/configure-database';
 import { wait } from '../utils';
 
 // This data might change as the data relies on Zammad itself.
