@@ -161,7 +161,8 @@ export const searchZammadUsers = async (
   
   // Email checks are easily done on database
   if (email) {
-    return ZammadUserCache().select('*').where({ email: email.trim() })
+    const data = await ZammadUserCache().select('*').where({ email: email.trim() })
+    return data.map(d => d.data)
   }
 
   // If it's phone number, first try the database because it is much quicker
@@ -171,7 +172,7 @@ export const searchZammadUsers = async (
       .orWhere({ phone: p })
       .orWhere({ mobile: p })
     if (users.length) {
-      return users
+      return users.map(d => d.data)
     }
   }
   if (mobile) {
@@ -180,7 +181,7 @@ export const searchZammadUsers = async (
       .orWhere({ phone: m })
       .orWhere({ mobile: m })
     if (users.length) {
-      return users
+      return users.map(d => d.data)
     }
   }
 
