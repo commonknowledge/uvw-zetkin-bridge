@@ -64,7 +64,6 @@
     "node-fetch": "^2.6.1",
     "nodemon": "^2.0.4",
     "pg": "^8.2.1",
-    "puppeteer": "^4.0.0",
     "query-string": "^6.13.1",
     "random-words": "^1.1.1",
     "rxjs": "^6.5.5",
