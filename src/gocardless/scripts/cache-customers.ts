@@ -1,4 +1,4 @@
-import { getGoCardlessPaginatedList, getRelevantZetkinDataFromGoCardlessCustomer } from '../gocardless';
+import { getGoCardlessPaginatedList, getPayAndSubscriptionDataFromGoCardlessCustomer } from '../gocardless';
 import db from '../../db';
 import * as GoCardless from 'gocardless-nodejs';
 import { chunk } from 'lodash';
