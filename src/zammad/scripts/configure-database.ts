@@ -223,7 +223,7 @@ export const expectedProperties: ZammadObjectProperty[] = [
     "data_type": "input",
     "data_option": {
       "default": "",
-      "type": "text",
+      "type": "url",
       "maxlength": 1000,
     },
     "screens": {
