@@ -10,6 +10,7 @@ import * as queryString from 'query-string'
 import { alternativeNumberFormats } from '../zetkin/zetkin';
 import * as Sentry from '@sentry/node';
 import { ZammadUserCacheItem, ZammadUserCache } from '../db';
+import { ZammadObjectProperty, ZammadObjectPropertyFromList } from './types';
 
 if (
   !process.env.ZAMMAD_BASE_URL ||
@@ -499,6 +500,38 @@ export const untagObject = async (object: ObjectType, o_id: any, _tags: string |
       }
     })
   }
+}
+
+export const upsertZammadObjectProperty = async (body: ZammadObjectProperty) => {
+  try {
+    const response = await zammad.post('object_manager_attributes', { body })
+    return response
+  } catch (e) {
+    if (!e.toString().includes("Object already exists")) {
+      throw e
+    } else {
+      const properties = await zammad.get<ZammadObjectPropertyFromList.Property[]>('object_manager_attributes')
+      const existingProperty = properties?.find(p => p.name === body.name)
+      if (!existingProperty) {
+        throw new Error("Couldn't update existing object.")
+      }
+      const response = zammad.put('object_manager_attributes', { body: {
+        id: existingProperty.id,
+        ...body
+      } })
+      return response
+    }
+  }
+}
+
+export const upsertZammadObjectProperties = async (expectedProperties: ZammadObjectProperty[]) => {
+  return Promise.all(
+    expectedProperties.map(body => upsertZammadObjectProperty(body))
+  )
+}
+
+export const migrateZammadDb = async () => {
+  return zammad.post('object_manager_attributes_execute_migrations')
 }
 
 export interface ZammadWebhook {

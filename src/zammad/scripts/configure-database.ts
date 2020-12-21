@@ -1,5 +1,5 @@
 import { ZammadObjectProperty } from '../types';
-import { zammad } from '../zammad';
+import { migrateZammadDb, upsertZammadObjectProperties } from '../zammad';
 
 export const expectedProperties: ZammadObjectProperty[] = [
   // {
@@ -567,20 +567,10 @@ export const expectedProperties: ZammadObjectProperty[] = [
       }
     }
   }
-]
-
-export const createFields = async () => {
-  return Promise.all(
-    expectedProperties.map(body => zammad.post('object_manager_attributes', { body }))
-  )
-}
-
-export const migrateDb = async () => {
-  return zammad.post('object_manager_attributes_execute_migrations')
-}
+];
 
 (async () => {
-  await createFields()
-  await migrateDb()
+  await upsertZammadObjectProperties(expectedProperties)
+  await migrateZammadDb()
   process.exit()
 })()

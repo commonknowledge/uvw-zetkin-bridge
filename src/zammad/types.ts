@@ -1,3 +1,72 @@
+export namespace ZammadObjectPropertyFromList {
+  export interface Property {
+    id:              number;
+    name:            string;
+    display:         string;
+    data_type:       string;
+    data_option:     DataOption;
+    data_option_new: DataOptionNew;
+    editable:        boolean;
+    active:          boolean;
+    screens:         Screens;
+    to_create:       boolean;
+    to_migrate:      boolean;
+    to_delete:       boolean;
+    to_config:       boolean;
+    position:        number;
+    created_by_id:   number;
+    updated_by_id:   number;
+    created_at:      Date;
+    updated_at:      Date;
+    object:          string;
+  }
+
+  export interface DataOption {
+      options:    Options;
+      default:    string;
+      null:       boolean;
+      maxlength:  number;
+      nulloption: boolean;
+  }
+
+  export interface Options {
+      Mr:      string;
+      Ms:      string;
+      Company: string;
+  }
+
+  export interface DataOptionNew {
+  }
+
+  export interface Screens {
+      create:        Create;
+      edit:          Edit;
+      create_middle: CreateMiddle;
+  }
+
+  export interface Create {
+      Customer: Customer;
+  }
+
+  export interface Customer {
+      shown:    boolean;
+      required: boolean;
+  }
+
+  export interface CreateMiddle {
+      Agent: Agent;
+  }
+
+  export interface Agent {
+      shown: boolean;
+  }
+
+  export interface Edit {
+      Customer: Agent;
+      Agent:    Agent;
+  }
+}
+
 export interface ZammadObjectProperty {
   name:        string;
   object:      string;
