@@ -79,7 +79,7 @@ export class Zammad {
       return payload
     } catch (e) {
       console.error('ZammadData', data)
-      console.error('ZammadError', e)
+      console.error('ZammadError', e, `${this.userName[0]}...${this.userName[this.userName.length - 1]}`, `${this.password[0]}...${this.password[this.password.length - 1]}`)
       throw e
     }
   }
