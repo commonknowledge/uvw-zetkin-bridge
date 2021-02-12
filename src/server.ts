@@ -17,7 +17,9 @@ export default () => {
   const app = express()
 
   // Placed before any other middleware
-  app.all('/webhooks/enquiry', proxy(process.env.ENQUIRY_WEBHOOK_URL))
+  app.post('/webhooks/enquiry', proxy(process.env.ENQUIRY_WEBHOOK_HOST, {
+    proxyReqPathResolver: () => process.env.ENQUIRY_WEBHOOK_PATH
+  }))
 
   // @ts-ignore
   app.use(sslRedirect());
