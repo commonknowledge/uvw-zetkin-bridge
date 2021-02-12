@@ -16,7 +16,7 @@ const Enquiry = t.object({
 	jobTitle: t.string(),
 	hourlyWageOrSalary: t.string(),
 	averageWorkHours: t.string(),
-	numberOfColleagues: t.string(),
+  numberOfColleagues: t.string(),
 })
 
 export type EnquiryType = t.StructType<typeof Enquiry>
@@ -93,7 +93,7 @@ const createTicketFromEnquiry = async (enquiry: EnquiryType): Promise<{
 
   await updateZammadUser(member.id, {
     employer: enquiry.employerName,
-    workdplace_address: enquiry.workplaceAddress,
+    workplace_address: enquiry.workplaceAddress,
     job_title: enquiry.jobTitle,
     wage_salary: enquiry.hourlyWageOrSalary,
     hours: enquiry.averageWorkHours,

@@ -69,7 +69,7 @@ export namespace ZammadObjectPropertyFromList {
 
 export interface ZammadObjectProperty {
   name:        string;
-  object:      string;
+  object:      'User' | 'Ticket';
   display:     string;
   active:      boolean;
   data_type:   string;

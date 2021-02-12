@@ -702,7 +702,7 @@ export interface ZammadUser {
   gender:                       string;
   employer:                     string;
   // Nasty typo TODO: Fix in Zammad and update here
-  workdplace_address:           string;
+  workplace_address:           string;
   number_of_colleagues:         string;
   workplace_zip:                string;
   job_title:                    string;
