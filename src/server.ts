@@ -16,6 +16,9 @@ export default () => {
   // @ts-ignore
   const app = express()
 
+  // Placed before any other middleware
+  app.all('/webhooks/enquiry', proxy(process.env.ENQUIRY_WEBHOOK_URL))
+
   // @ts-ignore
   app.use(sslRedirect());
   app.use(cookieParser());
@@ -45,8 +48,6 @@ export default () => {
   // })
 
   app.all('/webhooks/gocardless', handleGoCardlessWebhook)
-  // app.all('/webhooks/zammad', handleZammadWebhook)
-  app.all('/webhooks/enquiry', proxy(process.env.ENQUIRY_WEBHOOK_URL))
 
   return app
 }
